@@ -1,0 +1,37 @@
+# Quartus II 13.0sp1 build outputs (regenerated on compile)
+db/
+incremental_db/
+output_files/
+greybox_tmp/
+*.qws
+*.bak
+*.qarlog
+*.done
+*.smsg
+*.summary
+*.jdi
+*.sld
+*.sof
+*.pof
+PLLJ_PLLSPE_INFO.txt
+c5_pin_model_dump.txt
+
+# ModelSim-Altera
+work/
+transcript
+*.wlf
+*.vstf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Project #1: Counter-only version is kept locally but not tracked
+project_one/quartus_project1_counter_kk/
+
