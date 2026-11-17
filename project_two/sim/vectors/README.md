@@ -27,8 +27,9 @@ th, thg: 40-bit phase. x, pm: Q(32,31). Power sum: 28 bits. Shed: Q(32,31).
 | Case | Limit | Windows |
 |---|---|---|
 | `held_fb` | 1.2 pu, fb | pretrip, trip, limit |
-| `held_sat` | 1.2 pu, sat | pretrip, trip, limit, ufls |
+| `held_sat` | 1.2 pu, sat | pretrip, trip, limit, ufls, cross |
 | `spec_fb` | 1.2 pu for 10 s, then 1.0 pu, fb | pretrip, trip, limit, imax_step |
 | `nolimit_fb` | off (`limit_enabled` = 0) | pretrip, trip |
 
-The trip is at step 1,000,000. Only Imax 1.0 and 1.2 pu are supported; 2 pu or more means no limit.
+`cross` ends its first 1023 steps at the first grid update where x drops through the 59.0 Hz UFLS
+threshold (old x above, new x below). The trip is at step 1,000,000. Only Imax 1.0 and 1.2 pu are supported; 2 pu or more means no limit.

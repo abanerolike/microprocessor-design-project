@@ -86,12 +86,31 @@ def setup(name, kw):
     return g, ki, kf, sc, meth, tab, s
 
 
-def windows(name, g, sc):
-    """Start steps of the windows: before the trip, the trip, first limiting, UFLS and the limit step at 11 s.
-    Found once from a full run and kept in <case>_windows.txt; check mode only reads that file."""
+def cross(ki, kf, sc, meth, tab, s):
+    """First grid update where x drops through the first UFLS threshold, from the integer run alone.
+    The window ends its first 1023 steps right there, so old and new x lie on both sides of it."""
+    aux = fx.aux0()
+    while True:
+        xo = s[20]
+        s, _, _, _, aux = fx.run(s, ki, kf, sc, 1024, meth, True, True, 1 << 30, tab, aux)
+        if s[20] < tab[0, 0] <= xo:
+            return int(aux[0]) - 1024
+
+
+def windows(name, g, sc, ki, kf, meth, tab, s):
+    """Start steps of the windows: before the trip, the trip, first limiting, UFLS and the limit step at 11 s,
+    plus the first UFLS threshold crossing for held_sat. Found once and kept in <case>_windows.txt; later
+    runs only read that file, and check mode never writes it."""
     f = OUT / f"{name}_windows.txt"
+    if f.exists():
+        w = {a: int(b) for a, b in (line.split() for line in f.read_text().split("\n") if line)}
+        if CHECK or name != "held_sat" or "cross" in w:
+            return w
+        w["cross"] = cross(ki, kf, sc, meth, tab, s.copy())
+        f.write_text("".join(f"{a} {b}\n" for a, b in w.items()))
+        return w
     if CHECK:
-        return {a: int(b) for a, b in (line.split() for line in f.read_text().split("\n") if line)}
+        raise FileNotFoundError(f)
     rec, _ = fx.simulate(**CASES[name])              # 1.024 ms records, only to find where things happen
     kt, ks = int(sc[5]), int(sc[6])
     w = {"pretrip": 0, "trip": kt - 1024}
@@ -104,6 +123,8 @@ def windows(name, g, sc):
         w["ufls"] = int(round(rec[shed[0], 0] / fx.TS)) - 1024
     if g["imax_cont"] != g["imax"]:
         w["imax_step"] = ks - 1024
+    if name == "held_sat":
+        w["cross"] = cross(ki, kf, sc, meth, tab, s.copy())
     f.write_text("".join(f"{a} {b}\n" for a, b in w.items()))
     return w
 
@@ -133,7 +154,7 @@ emit("rom_sin.hex", [hx(v, 18) for v in fx.SIN])
 emit("rom_seed.hex", [hx(v, 18) for v in fx.SEED])
 for name, kw in CASES.items():
     g, ki, kf, sc, meth, tab, s = setup(name, kw)
-    for wname, k0 in windows(name, g, sc).items():
+    for wname, k0 in windows(name, g, sc, ki, kf, meth, tab, s).items():
         write_window(name, wname, k0, ki, kf, sc, meth, tab, s)
         print(f"{name:11s} {wname:9s} steps {k0}..{k0 + STEPS}  graph = model at the end")
 h = hashlib.md5()
