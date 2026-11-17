@@ -21,7 +21,8 @@ DEV = dict(
 # Grid scenario defaults (see spec v1 in the project notes)
 GRID = dict(H=3.3, D=2.0, R=0.05, K=0.3, Tg=3.0, cap=None,
             xg=0.2, rg=0.02, r=0.0, p0=0.0, trip=1.4 / 80, t_trip=1.0,
-            imax=1.2, imax_cont=1.0, t_short=10.0, ufls=True)
+            imax=1.2, imax_cont=1.0, t_short=10.0, ufls=True,
+            method="sat", ks=0.0, kvi=0.0, ith=1.0, xr=5.0)
 
 # UFLS: (Hz, delay in s, shed fraction of total load)
 UFLS = [(59.0, 0.1, 0.06), (58.8, 0.1, 0.06), (58.6, 0.1, 0.06),
@@ -51,12 +52,20 @@ def control(s, g, t):
     rot = np.exp(-1j * s["th"])
     w = 1 + d["dp"] * (g["p0"] - s["pf"])
     vref = 1 - d["dq"] * s["qf"]
-    i_raw = (d["kpv"] * (vref - s["vcf"]) + s["uv"]
-             + 1j * w * d["bc"] * s["vcf"] + s["i2f"])
+    if g["method"] == "vi":
+        # threshold virtual impedance: grows with the current above ith, X/R fixed
+        zv = g["kvi"] * max(abs(s["i1f"]) - g["ith"], 0.0) * (1 + 1j * g["xr"])
+        vref = vref - zv * s["i1f"]
+    ip = d["kpv"] * (vref - s["vcf"])
+    ff = 1j * w * d["bc"] * s["vcf"] + s["i2f"]
+    i_raw = ip + s["uv"] + ff
     imax = g["imax"] if t < g["t_trip"] + g["t_short"] else g["imax_cont"]
     i_lim = i_raw * min(1.0, imax / max(abs(i_raw), 1e-9))
+    # fb: the clipped part slows only the angle; decoupling terms keep the droop speed w
+    wth = w - g["ks"] * max(abs(i_raw) - imax, 0.0) if g["method"] == "fb" else w
     v1 = s["vcf"] + d["kpi"] * (i_lim - s["i1f"]) + s["ui"] + 1j * w * d["xl1"] * s["i1f"]
-    return dict(rot=rot, w=w, vref=vref, i_raw=i_raw, i_lim=i_lim, imax=imax, v1=v1 / rot)
+    return dict(rot=rot, w=w, wth=wth, vref=vref, i_raw=i_raw, i_lim=i_lim, imax=imax,
+                ip=ip, ff=ff, v1=v1 / rot)
 
 
 def rhs(t, y, g, pg0, shed, couple):
@@ -82,7 +91,7 @@ def rhs(t, y, g, pg0, shed, couple):
     # back-calculation anti-windup: the clipped part bleeds out of the voltage integrator
     duv = d["kiv"] * (c["vref"] - s["vcf"]) + d["kiv"] / d["kpv"] * (c["i_lim"] - c["i_raw"])
     dui = d["kii"] * (c["i_lim"] - s["i1f"])
-    dth = WB * (c["w"] - 1)
+    dth = WB * (c["wth"] - 1)
 
     # grid: change from the pre-trip balance, in system pu
     pgrid = (vg * np.conj(s["i2"])).real
@@ -99,10 +108,14 @@ def rhs(t, y, g, pg0, shed, couple):
 
 
 def settle(g, t_end=3.0):
-    """Run the device alone on a 60 Hz grid until it sits at P0."""
+    """Run the device alone on a 60 Hz grid until it sits at P0.
+
+    Always settles with plain saturation, so every method starts from the same state.
+    The fb and vi terms are zero there as long as the limit is not reached.
+    """
     s = {k: 0j for k in C_NAMES} | {k: 0.0 for k in R_NAMES}
     s.update(vc=1, vcf=1, ui=1)
-    g0 = g | dict(t_trip=1e9)
+    g0 = g | dict(t_trip=1e9, method="sat")
     sol = solve_ivp(rhs, (0, t_end), pack(s), args=(g0, 0.0, 0.0, False),
                     method="LSODA", rtol=1e-8, atol=1e-10)
     y = sol.y[:, -1]
@@ -142,8 +155,8 @@ def record(t, y, g, pg0, shed):
     dth = np.angle(np.exp(1j * (s["th"] - s["thg"])))
     return [t, F0 * (1 + s["x"]), abs(s["i1"]), abs(c["i_lim"]) < abs(c["i_raw"]) - 1e-9,
             pgrid, g["r"] * (pgrid - pg0) * 80, s["pm"] * 80, shed * 80, dth, abs(s["vc"]),
-            abs(c["i_raw"]), c["imax"]]
+            abs(c["i_raw"]), c["imax"], abs(c["ip"]), abs(s["uv"]), abs(c["ff"])]
 
 
 COLS = ["t", "f", "i1", "limited", "p_grid", "p_gfm_gw", "pm_gw", "shed_gw", "dtheta", "vc",
-        "iref", "imax"]
+        "iref", "imax", "ref_p", "ref_i", "ref_ff"]
