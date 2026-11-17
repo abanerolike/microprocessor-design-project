@@ -90,11 +90,12 @@ def cross(ki, kf, sc, meth, tab, s):
     """First grid update where x drops through the first UFLS threshold, from the integer run alone.
     The window ends its first 1023 steps right there, so old and new x lie on both sides of it."""
     aux = fx.aux0()
-    while True:
+    for _ in range(20_000_000 // 1024):                # the 20 s run
         xo = s[20]
         s, _, _, _, aux = fx.run(s, ki, kf, sc, 1024, meth, True, True, 1 << 30, tab, aux)
         if s[20] < tab[0, 0] <= xo:
             return int(aux[0]) - 1024
+    raise RuntimeError("no UFLS threshold crossing within 20 s")
 
 
 def windows(name, g, sc, ki, kf, meth, tab, s):
