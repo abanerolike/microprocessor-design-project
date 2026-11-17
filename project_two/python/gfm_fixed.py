@@ -3,7 +3,7 @@
 Formats (W total bits, F fraction bits):
   device states and wide signals  Q(32,28)    grid x, Pm, shed   Q(32,31)
   multiplier operands             Q(18,14)    sin, cos, converter voltage  Q(18,16)
-  w - 1 and wth - 1               Q(18,20)    phase              40-bit unsigned, wraps
+  w - 1 and wth - 1               Q(18,20)    phase              PH-bit unsigned, wraps (40)
   |i_raw|^2                       Q(37,28)    1024-sample power sum  28 bits of Q(18,14)
   constants                       18 bits each, own F
 Every product is formed at full width, rounded half up (add half, arithmetic shift),
@@ -41,6 +41,16 @@ def const18(c):
     while abs(round(c * 2.0**f)) >= 2**17:
         f -= 1
     return round(c * 2.0**f), f
+
+
+def set_phase_bits(ph):
+    """Phase accumulator width. Call before the first run (Numba freezes the globals at compile time)."""
+    global PH, KPH, KPF
+    PH = ph
+    KPH, KPF = const18(m.F0 * TS * 2.0**ph)                  # phase step per unit speed per microsecond
+
+
+set_phase_bits(40)
 
 
 def consts(g):
@@ -125,7 +135,6 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
     p0, trip, cap, imx0, imxc, ktrip, kshort, pg0 = sc
     cnt = np.zeros(1, dtype=np.int64)
     one = 1 << F
-    kph = round(m.F0 * TS * 2.0**PH / 1024)            # phase per unit speed, F = -10
 
     def mc(v, j):                                      # constant j times v, result at v's scale
         return rs(v * ki[j], kf[j])
@@ -197,7 +206,7 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
         uvr = st(uvr + mc(vrr - vcfr, 3) + mc(ilr - irr, 4))
         uvi = st(uvi + mc(-vcfi, 3) + mc(ili - iri, 4))
         uir, uii = st(uir + mc(ilr - i1fr, 2)), st(uii + mc(ili - i1fi, 2))
-        inc = rs(dm * kph, 10)
+        inc = rs(dm * KPH, 20 + KPF)                   # Q(18,20) speed x phase per unit speed
         th = (th + inc) & ((1 << PH) - 1)
 
         # 4. filters on step-k measurements (rot = c - j sn)
@@ -214,7 +223,7 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
 
         # 5. grid: angle every step with the held frequency, the rest every 1024 steps
         if couple:
-            incg = rs(sat(rs(x, FX - 21), 18, cnt) * kph, 11)
+            incg = rs(sat(rs(x, FX - 21), 18, cnt) * KPH, 21 + KPF)
             thg = (thg + incg) & ((1 << PH) - 1)
             dth += inc - incg
             psum = sat(psum + pg, 28, cnt)
