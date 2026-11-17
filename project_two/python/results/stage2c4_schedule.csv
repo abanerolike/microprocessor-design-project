@@ -1,0 +1,173 @@
+op,cls,unit,deps,ready,start,done,used by,out_bits,peak bits,note
+dpf,ADD,ADD,,0,0,1,wm1,33,31,
+ip_i,B,B,,0,0,2,ir_i,36,31,
+r1i1_i,B,B,,0,0,2,s1_i,25,19,
+r1i1_r,B,B,,0,0,2,s1_r,25,19,
+sp_ii,A,A,,0,0,1,sp_r,36,30,
+sp_ir,A,A,,0,0,1,sp_i,36,30,
+sp_ri,A,A,,0,0,1,sp_i,36,30,
+sp_rr,A,A,,0,0,1,sp_r,36,30,
+th_s_rom,ROM,SIN1,,0,0,1,th_s_d th_s,18,17,"u40 phase, address [39:30] (+256 for cos), next address wraps"
+thg_s_rom,ROM,SIN2,,0,0,1,thg_s_d thg_s,18,17,"u40 phase, address [39:30] (+256 for cos), next address wraps"
+vref_m,B,B,,0,0,2,vref,28,26,
+bcvc_r,B,B,,0,1,3,s2_i,32,27,
+incg,A,A,,0,1,2,thg,25,22,
+sp_i,ADD,ADD,sp_ir sp_ri,1,1,2,qf_d,32,30,
+sp_r,ADD,ADD,sp_rr sp_ii,1,1,2,pf_d,32,30,
+th_c_rom,ROM,SIN1,,0,1,2,th_c_d th_c,18,17,"u40 phase, address [39:30] (+256 for cos), next address wraps"
+th_s_d,ADD,ADD,th_s_rom,1,1,2,th_s_m,10,10,neighbour difference
+thg_c_rom,ROM,SIN2,,0,1,2,thg_c_d thg_c,18,18,"u40 phase, address [39:30] (+256 for cos), next address wraps"
+thg_s_d,ADD,ADD,thg_s_rom,1,1,2,thg_s_m,10,10,neighbour difference
+wm1,B,B,dpf,1,1,3,wop dm,27,24,"dp (p0 - pf), F28"
+xl1i1_i,B,B,,0,1,3,s1_r,29,25,
+xl1i1_r,B,B,,0,1,3,s1_i,29,25,
+bcvc_i,B,B,,0,2,4,s2_r,32,27,
+dxk,B,B,,0,2,4,dx,33,28,
+pf_d,ADD,ADD,sp_r,2,2,3,pf_m,33,29,
+qf_d,ADD,ADD,sp_i,2,2,3,qf_m,33,29,
+r2i2_i,B,B,,0,2,4,s3_i,29,25,
+r2i2_r,B,B,,0,2,4,s3_r,29,25,
+th_c_d,ADD,ADD,th_c_rom,2,2,3,th_c_m,10,10,neighbour difference
+th_s_m,A,A,th_s_d,2,2,3,th_s,27,26,x u16 fraction [29:14]
+thg,ADD,ADD,incg,2,2,3,,42,41,
+thg_c_d,ADD,ADD,thg_c_rom,2,2,3,thg_c_m,10,10,neighbour difference
+thg_s_m,A,A,thg_s_d,2,2,3,thg_s,27,26,x u16 fraction [29:14]
+vref,ADD,ADD,vref_m,2,2,3,ev_r,33,30,
+ev_r,ADD,ADD,vref,3,3,4,ip_r uv1_r,34,30,
+pmk,B,B,,0,3,5,dpm,35,30,
+th_c_m,A,A,th_c_d,3,3,4,th_c,27,26,x u16 fraction [29:14]
+th_s,ADD,ADD,th_s_rom th_s_m,3,3,4,v1_bs v1_as i1rot_bs i1rot_as vcrot_bs vcrot_as i2rot_bs i2rot_as,18,17,"Q(18,16)"
+thg_c_m,A,A,thg_c_d,3,3,4,thg_c,27,26,x u16 fraction [29:14]
+thg_s,ADD,ADD,thg_s_rom thg_s_m,3,3,4,pg_s s3_i,18,17,"Q(18,16)"
+uv1_i,B,B,,0,3,5,uv_i,24,18,
+wop,ADD,ADD,wm1,3,3,4,wv_r wv_i wi_r wi_i,18,18,"w at Q(18,16)"
+xl2i2_i,B,B,,0,3,5,s3_r,31,29,
+xl2i2_r,B,B,,0,3,5,s3_i,31,29,
+ip_r,B,B,ev_r,4,4,6,ir_r,36,31,
+pf_m,B,B,pf_d,3,4,6,pf,19,15,
+qf_m,B,B,qf_d,3,4,6,qf,19,16,
+th_c,ADD,ADD,th_c_rom th_c_m,4,4,5,v1_ac v1_bc i1rot_ac i1rot_bc vcrot_ac vcrot_bc i2rot_ac i2rot_bc,18,17,"Q(18,16)"
+thg_c,ADD,ADD,thg_c_rom thg_c_m,4,4,5,pg_c s3_r,18,18,"Q(18,16)"
+uv1_r,B,B,ev_r,4,4,6,uv_r,24,18,
+wi_i,A,A,wop,4,4,5,xw_i,34,30,
+wi_r,A,A,wop,4,4,5,xw_r,34,30,
+wv_i,A,A,wop,4,4,5,ff_i,34,30,
+wv_r,A,A,wop,4,4,5,ff_r,34,30,"Q(18,16) x Q(18,14)"
+dpm,ADD,ADD,pmk,5,5,6,pm_m pm,36,30,
+ff_i,B,B,wv_i,5,5,7,ir_r,32,27,"bC w vcf_i, enters the real part with -"
+ff_r,B,B,wv_r,5,5,7,ir_i,32,27,"bC w vcf_r, enters the imaginary part with +"
+i1rot_ac,A,A,th_c,5,5,6,i1rot_r,36,32,
+i1rot_bs,A,A,th_s,4,5,6,i1rot_r,36,32,
+pg_c,A,A,thg_c,5,5,6,pg,36,32,
+pg_s,A,A,thg_s,4,5,6,pg,36,32,
+xw_i,B,B,wi_i,5,5,7,v1c_r,31,25,"xL1 w i1f_i, into the real part with -"
+xw_r,B,B,wi_r,5,5,7,v1c_i,31,25,"xL1 w i1f_r, into the imaginary part with +"
+i1rot_as,A,A,th_s,4,6,7,i1rot_i,36,32,
+i1rot_bc,A,A,th_c,5,6,7,i1rot_i,36,32,
+i1rot_r,ADD,ADD,i1rot_ac i1rot_bs,6,6,7,i1f_d_r,32,30,
+pf,ADD,ADD,pf_m,6,6,7,,32,30,
+pg,ADD,ADD,pg_c pg_s,6,6,7,psum,18,16,"grid power sample Q(18,14)"
+pm_m,B,B,dpm,6,6,8,pm,25,18,
+qf,ADD,ADD,qf_m,6,6,7,,32,30,
+vcrot_ac,A,A,th_c,5,6,7,vcrot_r,36,32,
+vcrot_bs,A,A,th_s,4,6,7,vcrot_r,36,32,
+i1f_d_r,ADD,ADD,i1rot_r,7,7,8,i1f_m_r,33,25,
+i1rot_i,ADD,ADD,i1rot_bc i1rot_as,7,7,8,i1f_d_i,32,30,
+i2rot_ac,A,A,th_c,5,7,8,i2rot_r,36,32,
+i2rot_bs,A,A,th_s,4,7,8,i2rot_r,36,32,
+ir_i,ADD,ADD,ip_i ff_r,7,7,8,io_i il_i aw_d_i,32,31,
+ir_r,ADD,ADD,ip_r ff_i,7,7,8,io_r il_r aw_d_r,32,32,
+psum,ADD,ADD,pg,7,7,8,dpg,28,26,
+vcrot_as,A,A,th_s,4,7,8,vcrot_i,36,32,
+vcrot_bc,A,A,th_c,5,7,8,vcrot_i,36,32,
+vcrot_r,ADD,ADD,vcrot_ac vcrot_bs,7,7,8,vcf_d_r,32,30,
+dpg,ADD,ADD,psum,8,8,9,rdp,20,17,
+i1f_d_i,ADD,ADD,i1rot_i,8,8,9,i1f_m_i,33,25,
+i1f_m_r,B,B,i1f_d_r,8,8,10,i1f_r,25,17,
+i2rot_as,A,A,th_s,4,8,9,i2rot_i,36,32,
+i2rot_bc,A,A,th_c,5,8,9,i2rot_i,36,32,
+i2rot_r,ADD,ADD,i2rot_ac i2rot_bs,8,8,9,i2f_d_r,32,30,
+io_i,ADD,ADD,ir_i,8,8,9,sq_i,18,17,
+io_r,ADD,ADD,ir_r,8,8,9,sq_r,18,18,
+pm,ADD,ADD,dpm pm_m,8,8,9,,32,26,held at the reserve cap when rising
+vcf_d_r,ADD,ADD,vcrot_r,8,8,9,vcf_m_r,33,25,
+vcrot_i,ADD,ADD,vcrot_bc vcrot_as,8,8,9,vcf_d_i,32,30,
+i1f_m_i,B,B,i1f_d_i,9,9,11,i1f_i,25,16,
+i2f_d_r,ADD,ADD,i2rot_r,9,9,10,i2f_m_r,33,25,
+i2rot_i,ADD,ADD,i2rot_bc i2rot_as,9,9,10,i2f_d_i,32,30,
+rdp,B,B,dpg,9,9,11,dx,30,30,
+sq_i,A,A,io_i,9,9,10,m2,37,33,
+sq_r,A,A,io_r,9,9,10,m2,37,34,
+vcf_d_i,ADD,ADD,vcrot_i,9,9,10,vcf_m_i,33,23,
+vcf_m_r,B,B,vcf_d_r,9,9,11,vcf_r,25,16,
+i1f_r,ADD,ADD,i1f_m_r,10,10,11,,32,30,
+i2f_d_i,ADD,ADD,i2rot_i,10,10,11,i2f_m_i,33,25,
+i2f_m_r,B,B,i2f_d_r,10,10,12,i2f_r,25,16,
+m2,ADD,ADD,sq_r sq_i,10,10,11,lim norm,38,34,u37 F28
+vcf_m_i,B,B,vcf_d_i,10,10,12,vcf_i,25,14,
+dx,ADD,ADD,dxk rdp,11,11,12,x_m,35,30,
+i1f_i,ADD,ADD,i1f_m_i,11,11,12,,32,30,
+i2f_m_i,B,B,i2f_d_i,11,11,13,i2f_i,25,16,
+lim,ADD,ADD,m2,11,11,12,exc il_r il_i,2,2,limited flag (0 in no-limit mode)
+norm,ADD,ADD,m2,11,11,12,seed uy2 scl mag il_r il_i,38,34,"priority encoder: m2s = max(m2, 2^26), e in -1..3, u u19 Q17"
+vcf_r,ADD,ADD,vcf_m_r,11,11,12,,32,30,
+i2f_r,ADD,ADD,i2f_m_r,12,12,13,,32,30,
+seed,ROM,SEED,norm,12,12,13,y2 y1,18,18,
+vcf_i,ADD,ADD,vcf_m_i,12,12,13,,32,30,
+x_m,B,B,dx,12,12,14,x,24,18,
+i2f_i,ADD,ADD,i2f_m_i,13,13,14,,32,30,
+y2,A,A,seed,13,13,14,uy2,19,18,
+uy2,B,B,norm y2,14,14,16,z,20,19,
+x,ADD,ADD,x_m,14,14,15,ufls,32,27,
+ufls,ADD,ADD,x,15,15,16,,32,28,"7 compares, tick counters, shed"
+z,ADD,ADD,uy2,16,16,17,y1,20,20,
+y1,B,B,seed z,17,17,19,scl mag,19,18,
+mag,C,C,norm y1,19,19,21,exc,33,32,|i_raw| F28
+scl,B,B,y1 norm,19,19,21,il_r il_i,19,18,Imax u29 F28 (< 2 pu) x u18 -> Q16 u18; - MARGIN; cap 2^(16+e)
+exc,ADD,ADD,mag lim,21,21,22,dmk,33,32,0 when not limited
+il_i,B,B,ir_i scl norm lim,21,21,23,de_i aw_d_i,32,30,
+il_r,B,B,ir_r scl norm lim,21,21,23,de_r aw_d_r,32,30,mux: limited ? scaled : i_raw
+dmk,B,B,exc,22,22,24,dm,31,26,ks exc (fb only)
+aw_d_i,ADD,ADD,il_i ir_i,23,23,24,aw_i,33,31,
+aw_d_r,ADD,ADD,il_r ir_r,23,23,24,aw_r,33,31,
+de_i,ADD,ADD,il_i,23,23,24,kp_i ui1_i,33,26,
+de_r,ADD,ADD,il_r,23,23,24,kp_r ui1_r,33,27,
+aw_r,B,B,aw_d_r,24,24,26,uv_r,19,18,
+dm,ADD,ADD,wm1 dmk,24,24,25,inc,18,18,"Q(18,20)"
+kp_i,B,B,de_i,24,24,26,v1c_i,31,23,
+kp_r,B,B,de_r,24,24,26,v1c_r,31,25,
+ui1_r,B,B,de_r,24,24,26,ui_r,17,11,
+aw_i,B,B,aw_d_i,24,25,27,uv_i,19,18,
+inc,A,A,dm,25,25,26,th,26,24,phase step s25
+ui1_i,B,B,de_i,24,25,27,ui_i,17,9,
+th,ADD,ADD,inc,26,26,27,,42,41,"u40, wraps"
+ui_r,ADD,ADD,ui1_r,26,26,27,,32,22,
+uv_r,ADD,ADD,uv1_r aw_r,26,26,27,,32,25,
+v1c_i,ADD,ADD,kp_i xw_r,26,26,27,v1_bs v1_bc,18,18,
+v1c_r,ADD,ADD,kp_r xw_i,26,26,27,v1_ac v1_as,18,18,"Q(18,16)"
+ui_i,ADD,ADD,ui1_i,27,27,28,,32,22,
+uv_i,ADD,ADD,uv1_i aw_i,27,27,28,,32,25,
+v1_ac,A,A,v1c_r th_c,27,27,28,v1_r,36,34,
+v1_as,A,A,v1c_r th_s,27,27,28,v1_i,36,34,
+v1_bc,A,A,v1c_i th_c,27,27,28,v1_i,36,33,
+v1_bs,A,A,v1c_i th_s,27,27,28,v1_r,36,34,
+v1_i,ADD,ADD,v1_as v1_bc,28,28,29,s1_i,34,30,
+v1_r,ADD,ADD,v1_ac v1_bs,28,28,29,s1_r,34,30,
+s1_i,ADD,ADD,v1_i r1i1_i xl1i1_r,29,29,30,a1_i,35,25,
+s1_r,ADD,ADD,v1_r r1i1_r xl1i1_i,29,29,30,a1_r,35,24,
+a1_i,B,B,s1_i,30,30,32,n1_i,28,18,
+a1_r,B,B,s1_r,30,30,32,n1_r,28,17,
+n1_i,ADD,ADD,a1_i,32,32,33,s2_i,32,30,
+n1_r,ADD,ADD,a1_r,32,32,33,s2_r,32,30,
+s2_i,ADD,ADD,n1_i bcvc_r,33,33,34,ac_i,34,26,
+s2_r,ADD,ADD,n1_r bcvc_i,33,33,34,ac_r,34,25,
+ac_i,B,B,s2_i,34,34,36,nc_i,26,17,
+ac_r,B,B,s2_r,34,34,36,nc_r,26,16,
+nc_i,ADD,ADD,ac_i,36,36,37,s3_i,32,30,
+nc_r,ADD,ADD,ac_r,36,36,37,s3_r,32,30,
+s3_i,ADD,ADD,nc_i thg_s r2i2_i xl2i2_r,37,37,38,a2_i,35,26,
+s3_r,ADD,ADD,nc_r thg_c r2i2_r xl2i2_i,37,37,38,a2_r,35,27,
+a2_i,B,B,s3_i,38,38,40,n2_i,26,16,
+a2_r,B,B,s3_r,38,38,40,n2_r,26,16,
+n2_i,ADD,ADD,a2_i,40,40,41,,32,30,
+n2_r,ADD,ADD,a2_r,40,40,41,,32,30,

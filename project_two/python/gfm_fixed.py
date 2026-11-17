@@ -112,7 +112,7 @@ def limit(irr, iri, imx, cnt):
     orr, ori = sat(rs(irr, F - OPF), OPW, cnt), sat(rs(iri, F - OPF), OPW, cnt)
     m2 = orr * orr + ori * ori                                    # F = 2 OPF
     th = imx - (imx >> 11)
-    if m2 <= (th * th) >> (2 * F - 2 * OPF):
+    if imx >= 2 << F or m2 <= (th * th) >> (2 * F - 2 * OPF):    # Imax of 2 pu or more: "no limit" mode
         return irr, iri, 0, m2
     if HW:
         y, e = invsqrt(m2)
@@ -129,7 +129,7 @@ def limit(irr, iri, imx, cnt):
 
 
 @njit
-def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
+def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab, aux):
     (i1r, i1i, vcr, vci, i2r, i2i, i1fr, i1fi, vcfr, vcfi, i2fr, i2fi,
      uvr, uvi, uir, uii, pf, qf, th, thg, x, pm, dth) = s
     p0, trip, cap, imx0, imxc, ktrip, kshort, pg0 = sc
@@ -145,15 +145,16 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
     def st(v):                                         # store into a 32-bit state
         return sat(v, 32, cnt)
 
-    shed, psum = 0, 0
-    armed = np.ones(tab.shape[0], dtype=np.int64)
-    ticks = np.zeros(tab.shape[0], dtype=np.int64)
+    # aux: step number k0 of the first step, power sum, shed, UFLS tick counters, UFLS armed flags
+    k0, psum, shed = aux[0], aux[1], aux[2]
+    ticks, armed = aux[3:3 + tab.shape[0]].copy(), aux[3 + tab.shape[0]:].copy()
     rec = np.zeros(((n + rec_every - 1) // rec_every, 8))
     fmin, i1max, t_over, energy, omax = 60.0, 0.0, 0.0, 0.0, 0.0
     pre = np.array([1e9, -1e9, 1e9, -1e9])             # f min, f max, |i1| min, |i1| max before the trip
     dmin, dmax = dth, dth
 
-    for k in range(n):
+    for j in range(n):
+        k = k0 + j
         # 1. control from step-k states
         c, sn = trig(th)                               # rot = c - j sn
         cg, sg = trig(thg)
@@ -163,7 +164,7 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
         wop = sat(rs(one + wm1, F - 16), 18, cnt)
         wvr, wvi = rs(wop * op(vcfr), S1), rs(wop * op(vcfi), S1)
         ffr, ffi = -mc(wvi, 12) + i2fr, mc(wvr, 12) + i2fi
-        irr, iri = ipr + uvr + ffr, ipi + uvi + ffi
+        irr, iri = st(ipr + uvr + ffr), st(ipi + uvi + ffi)      # Q(32,28): keeps the products after it at 32 bits
         imx = imx0 if k < kshort else imxc
         ilr, ili, exc, m2 = limit(irr, iri, imx, cnt)
         dm = sat(rs(wm1 - (mc(exc, 17) if meth == 1 else 0), F - 20), 18, cnt)
@@ -187,8 +188,8 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
                 t_over += TS
             energy += TS * ki[22] / 2.0**kf[22] * (pg - pg0) / 2.0**14 * 80
             dmin, dmax = min(dmin, dth), max(dmax, dth)
-        if k % rec_every == 0:
-            rec[k // rec_every] = (k * TS, f, ai, np.sqrt(m2 / 2.0**(2 * OPF)), imf,
+        if j % rec_every == 0:
+            rec[j // rec_every] = (k * TS, f, ai, np.sqrt(m2 / 2.0**(2 * OPF)), imf,
                                    ki[22] / 2.0**kf[22] * (pg - pg0) / 2.0**14 * 80,
                                    dth * 2 * np.pi / 2.0**PH, shed / 2.0**FX * 80)
 
@@ -210,14 +211,14 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
         th = (th + inc) & ((1 << PH) - 1)
 
         # 4. filters on step-k measurements (rot = c - j sn)
-        sr = rs(op(vcfr) * op(i2fr) + op(vcfi) * op(i2fi), 2 * OPF - F)
-        si = rs(op(vcfi) * op(i2fr) - op(vcfr) * op(i2fi), 2 * OPF - F)
+        sr = st(rs(op(vcfr) * op(i2fr) + op(vcfi) * op(i2fi), 2 * OPF - F))
+        si = st(rs(op(vcfi) * op(i2fr) - op(vcfr) * op(i2fi), 2 * OPF - F))
         a, b = op(i1r), op(i1i)
-        i1fr, i1fi = st(i1fr + mc(rs(a * c + b * sn, S1) - i1fr, 0)), st(i1fi + mc(rs(b * c - a * sn, S1) - i1fi, 0))
+        i1fr, i1fi = st(i1fr + mc(st(rs(a * c + b * sn, S1)) - i1fr, 0)), st(i1fi + mc(st(rs(b * c - a * sn, S1)) - i1fi, 0))
         a, b = op(vcr), op(vci)
-        vcfr, vcfi = st(vcfr + mc(rs(a * c + b * sn, S1) - vcfr, 0)), st(vcfi + mc(rs(b * c - a * sn, S1) - vcfi, 0))
+        vcfr, vcfi = st(vcfr + mc(st(rs(a * c + b * sn, S1)) - vcfr, 0)), st(vcfi + mc(st(rs(b * c - a * sn, S1)) - vcfi, 0))
         a, b = op(i2r), op(i2i)
-        i2fr, i2fi = st(i2fr + mc(rs(a * c + b * sn, S1) - i2fr, 0)), st(i2fi + mc(rs(b * c - a * sn, S1) - i2fi, 0))
+        i2fr, i2fi = st(i2fr + mc(st(rs(a * c + b * sn, S1)) - i2fr, 0)), st(i2fi + mc(st(rs(b * c - a * sn, S1)) - i2fi, 0))
         pf, qf = st(pf + mc(sr - pf, 1)), st(qf + mc(si - qf, 1))
         i1r, i1i, vcr, vci, i2r, i2i = n1r, n1i, ncr, nci, n2r, n2i
 
@@ -241,12 +242,12 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
 
         # 6. UFLS on the 1.024 ms tick
         if ufls_on and (k + 1) % 1024 == 0:
-            for j in range(tab.shape[0]):
-                if armed[j] > 0:
-                    ticks[j] = ticks[j] + 1 if x < tab[j, 0] else 0
-                    if ticks[j] >= tab[j, 1]:
-                        shed += tab[j, 2]
-                        armed[j] = 0
+            for u in range(tab.shape[0]):
+                if armed[u] > 0:
+                    ticks[u] = ticks[u] + 1 if x < tab[u, 0] else 0
+                    if ticks[u] >= tab[u, 1]:
+                        shed += tab[u, 2]
+                        armed[u] = 0
 
     cg, sg = trig(thg)
     pg = sat(rs(cg * op(i2r) + sg * op(i2i), OPF + 2), 18, cnt)
@@ -254,7 +255,8 @@ def run(s, ki, kf, sc, n, meth, couple, ufls_on, rec_every, tab):
                       uvr, uvi, uir, uii, pf, qf, th, thg, x, pm, dth], dtype=np.int64)
     stats = np.array([fmin, i1max, t_over, energy, shed / 2.0**FX * 80, 60 * (1 + x / 2.0**FX),
                       (dmax - dmin) // 2**PH, omax, cnt[0], pre[1] - pre[0], pre[3] - pre[2]])
-    return s_out, rec, stats, pg
+    aux_out = np.concatenate((np.array([k0 + n, psum, shed], dtype=np.int64), ticks, armed))
+    return s_out, rec, stats, pg, aux_out
 
 
 def to_int(s):
@@ -268,6 +270,11 @@ def to_int(s):
     return np.array(out, dtype=np.int64)
 
 
+def aux0():
+    """Run-internal state at a fresh start: step 0, empty power sum, nothing shed, all UFLS stages armed."""
+    return np.array([0, 0, 0] + [0] * len(m.UFLS) + [1] * len(m.UFLS), dtype=np.int64)
+
+
 def ufls_table():
     return np.array([[round((fs / 60 - 1) * 2**FX), int(np.ceil((dl - 1e-9) / 1.024e-3)), round(fr * 2**FX)]
                      for fs, dl, fr in m.UFLS], dtype=np.int64)
@@ -276,6 +283,9 @@ def ufls_table():
 def simulate(t_end=20.0, rec_every=1024, **kw):
     """Same common start as 2a/2b, then the trip run, all in integers. Only sat and fb."""
     g = m.GRID | kw
+    for v in (g["imax"], g["imax_cont"]):            # limiter checked only at these; 2 pu or more means no limit
+        if not (v in (1.0, 1.2) or v >= 2.0):         # an explicit error: python -O drops asserts
+            raise ValueError(f"Imax {v} pu: not verified for the integer limiter")
     y, _ = m.settle(g)
     s = to_int(m.unpack(y))
     ki, kf = consts(g)
@@ -285,12 +295,12 @@ def simulate(t_end=20.0, rec_every=1024, **kw):
     imx0, imxc = round(g["imax"] * 2**F), round(g["imax_cont"] * 2**F)
     p0 = round(g["p0"] * 2**F)
     sc = np.array([p0, 0, cap, imx0, imx0, big, big, 0], dtype=np.int64)
-    s, _, _, pg0 = run(s, ki, kf, sc, 1_000_000, 0, False, False, 1_000_000, tab)
+    s, _, _, pg0, _ = run(s, ki, kf, sc, 1_000_000, 0, False, False, 1_000_000, tab, aux0())
     kt = round(g["t_trip"] / TS)
     sc = np.array([p0, round(g["trip"] * 2**FX), cap, imx0, imxc, kt, kt + round(g["t_short"] / TS), pg0],
                   dtype=np.int64)
-    s, rec, st, _ = run(s, ki, kf, sc, round(t_end / TS), {"sat": 0, "fb": 1}[g["method"]], True,
-                        g["ufls"], rec_every, tab)
+    s, rec, st, _, _ = run(s, ki, kf, sc, round(t_end / TS), {"sat": 0, "fb": 1}[g["method"]], True,
+                           g["ufls"], rec_every, tab, aux0())
     keys = ["f min [Hz]", "max |i1| [pu]", "time over Imax(t)+0.5% [s]", "GFM extra energy [GW s]",
             "UFLS shed [GW]", "f at 20 s [Hz]", "pole slips", "max over Imax(t) [pu]", "saturations",
             "pre-trip f ptp [Hz]", "pre-trip |i1| ptp [pu]"]
