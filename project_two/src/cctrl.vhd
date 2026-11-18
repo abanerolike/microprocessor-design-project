@@ -25,9 +25,9 @@ ENTITY cctrl IS
 		uv1r, uv1i : IN SIGNED(23 DOWNTO 0);
 		s0     : IN words(0 TO 3);
 		s      : BUFFER words(0 TO 3) := (OTHERS => (OTHERS => '0'));   -- uv, ui (re, im)
-		v1r, v1i : OUT SIGNED(33 DOWNTO 0);
+		v1r, v1i : BUFFER SIGNED(33 DOWNTO 0);
 		dm     : BUFFER SIGNED(17 DOWNTO 0);         -- Q(18,20)
-		inc    : OUT SIGNED(25 DOWNTO 0));
+		inc    : BUFFER SIGNED(25 DOWNTO 0));
 END cctrl;
 
 ARCHITECTURE a OF cctrl IS

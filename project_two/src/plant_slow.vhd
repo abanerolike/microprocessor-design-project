@@ -24,7 +24,7 @@ ENTITY plant_slow IS
 		psum    : BUFFER SIGNED(27 DOWNTO 0) := (OTHERS => '0');
 		ticks   : BUFFER counts;
 		armed   : BUFFER STD_LOGIC_VECTOR(0 TO 6);
-		incg    : OUT SIGNED(24 DOWNTO 0));
+		incg    : BUFFER SIGNED(24 DOWNTO 0));
 END plant_slow;
 
 ARCHITECTURE a OF plant_slow IS

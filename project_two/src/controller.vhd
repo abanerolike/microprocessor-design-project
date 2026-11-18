@@ -29,8 +29,8 @@ ENTITY controller IS
 		lim    : BUFFER STD_LOGIC;
 		exc    : BUFFER SIGNED(32 DOWNTO 0);
 		dm     : BUFFER SIGNED(17 DOWNTO 0);
-		v1r, v1i : OUT SIGNED(33 DOWNTO 0);
-		inc    : OUT SIGNED(25 DOWNTO 0));
+		v1r, v1i : BUFFER SIGNED(33 DOWNTO 0);
+		inc    : BUFFER SIGNED(25 DOWNTO 0));
 END controller;
 
 ARCHITECTURE a OF controller IS

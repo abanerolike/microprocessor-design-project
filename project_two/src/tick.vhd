@@ -8,8 +8,8 @@ USE ieee.std_logic_1164.ALL;
 ENTITY tick IS
 	PORT (clk, load : IN STD_LOGIC;
 		k0   : IN INTEGER RANGE 0 TO 1023;
-		c    : OUT INTEGER RANGE 0 TO 49;
-		step : OUT STD_LOGIC;
+		c    : BUFFER INTEGER RANGE 0 TO 49;
+		step : BUFFER STD_LOGIC;
 		slow : OUT STD_LOGIC);
 END tick;
 

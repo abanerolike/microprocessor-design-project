@@ -22,7 +22,7 @@ ENTITY plant_fast IS
 		cg, sg   : IN SIGNED(17 DOWNTO 0);               -- grid voltage = cos and sin of the grid angle, Q16
 		i1r0, i1i0, vcr0, vci0, i2r0, i2i0 : IN SIGNED(31 DOWNTO 0);
 		i1r, i1i, vcr, vci, i2r, i2i : BUFFER SIGNED(31 DOWNTO 0) := (OTHERS => '0');
-		pg       : OUT SIGNED(17 DOWNTO 0));             -- power into the grid source, Q14
+		pg       : BUFFER SIGNED(17 DOWNTO 0));             -- power into the grid source, Q14
 END plant_fast;
 
 ARCHITECTURE a OF plant_fast IS

@@ -99,16 +99,32 @@ def cross(ki, kf, sc, meth, tab, s):
     raise RuntimeError("no UFLS threshold crossing within 20 s")
 
 
+def excess(ki, kf, sc, meth, tab, s, k0):
+    """First window from step k0 on where |i_raw| - Imax stays above 0 for all 2048 steps, so the fb term
+    ks exc acts on every step. Steps the graph one step at a time (exc is a node value, not a state)."""
+    s, _, _, _, aux = fx.run(s, ki, kf, sc, k0, meth, True, True, 1 << 30, tab, fx.aux0())
+    G, st, ax, n = sg.Graph(), list(s), list(aux), 0
+    for k in range(k0, k0 + 200_000):
+        st, ax = sg.step(G, st, ax, ki, kf, sc, meth, tab)
+        n = n + 1 if G.last["exc"] > 0 else 0
+        if n == STEPS:
+            return k - STEPS + 1
+    raise RuntimeError("no window with exc > 0 on every step within 200,000 steps of the limit window")
+
+
 def windows(name, g, sc, ki, kf, meth, tab, s):
     """Start steps of the windows: before the trip, the trip, first limiting, UFLS and the limit step at 11 s,
-    plus the first UFLS threshold crossing for held_sat. Found once and kept in <case>_windows.txt; later
-    runs only read that file, and check mode never writes it."""
+    plus the first UFLS threshold crossing for held_sat and the first fb-active window for held_fb. Found
+    once and kept in <case>_windows.txt; later runs only read that file, and check mode never writes it."""
     f = OUT / f"{name}_windows.txt"
     if f.exists():
         w = {a: int(b) for a, b in (line.split() for line in f.read_text().split("\n") if line)}
-        if CHECK or name != "held_sat" or "cross" in w:
+        if CHECK or ("cross" in w or name != "held_sat") and ("excess" in w or name != "held_fb"):
             return w
-        w["cross"] = cross(ki, kf, sc, meth, tab, s.copy())
+        if name == "held_sat":
+            w["cross"] = cross(ki, kf, sc, meth, tab, s.copy())
+        else:
+            w["excess"] = excess(ki, kf, sc, meth, tab, s.copy(), w["limit"])
         f.write_text("".join(f"{a} {b}\n" for a, b in w.items()))
         return w
     if CHECK:
@@ -127,6 +143,8 @@ def windows(name, g, sc, ki, kf, meth, tab, s):
         w["imax_step"] = ks - 1024
     if name == "held_sat":
         w["cross"] = cross(ki, kf, sc, meth, tab, s.copy())
+    if name == "held_fb":
+        w["excess"] = excess(ki, kf, sc, meth, tab, s.copy(), w["limit"])
     f.write_text("".join(f"{a} {b}\n" for a, b in w.items()))
     return w
 
