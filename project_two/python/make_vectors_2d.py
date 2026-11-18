@@ -30,7 +30,11 @@ CASES = {
     "held_sat": B | dict(imax_cont=1.2),
     "spec_fb": B | dict(method="fb", ks=0.2),
     "nolimit_fb": B | dict(imax=10.0, imax_cont=10.0, method="fb", ks=0.2),
+    "spec_sat": B,
+    "nolimit_sat": B | dict(imax=10.0, imax_cont=10.0),
 }
+# the same six with trip A (1.4 GW, one nuclear unit) in place of trip B (3.3 GW); "a" marks the case
+CASES |= {k.replace("_", "a_", 1): v | dict(trip=1.4 / 80) for k, v in list(CASES.items())}
 # state words without dth (simulation only) and their bit widths
 WIDTH = [32] * 18 + [40, 40, 32, 32]
 if sys.argv[1:] not in ([], ["check"]):                # a typo must not fall back to writing the reference files
@@ -205,6 +209,13 @@ for name, kw in CASES.items():
     for wname, k0 in windows(name, g, sc, ki, kf, meth, tab, s).items():
         write_window(name, wname, k0, ki, kf, sc, meth, tab, s)
         print(f"{name:11s} {wname:9s} steps {k0}..{k0 + STEPS}  graph = model at the end")
+# with no limit the fb term is always 0, so sat and fb must give the same windows byte for byte
+for a in ("nolimit", "nolimita"):
+    for f in sorted(OUT.glob(f"{a}_fb_*")):
+        if f.name.endswith(("config.txt", "start.txt")):
+            continue
+        if f.read_bytes() != (OUT / f.name.replace("_fb_", "_sat_")).read_bytes():
+            raise RuntimeError(f"{f.name}: sat and fb differ with no limit")
 h = hashlib.md5()
 for f in sorted(OUT.glob("*")):
     if f.suffix in (".txt", ".hex"):

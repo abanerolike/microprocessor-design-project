@@ -32,7 +32,17 @@ th, thg: 40-bit phase. x, pm: Q(32,31). Power sum: 28 bits. Shed: Q(32,31).
 | `held_sat` | 1.2 pu, sat | pretrip, trip, limit, ufls, cross |
 | `spec_fb` | 1.2 pu for 10 s, then 1.0 pu, fb | pretrip, trip, limit, imax_step |
 | `nolimit_fb` | off (`limit_enabled` = 0) | pretrip, trip |
+| `spec_sat` | 1.2 pu for 10 s, then 1.0 pu, sat | pretrip, trip, limit, ufls, imax_step |
+| `nolimit_sat` | off, sat | pretrip, trip |
+| `helda_fb`, `helda_sat` | as `held_*`, trip A | pretrip, trip |
+| `speca_fb` | as `spec_fb`, trip A | pretrip, trip, limit, imax_step |
+| `speca_sat` | as `spec_sat`, trip A | pretrip, trip, limit, ufls, imax_step |
+| `nolimita_fb`, `nolimita_sat` | as `nolimit_*`, trip A | pretrip, trip |
 
 `cross` ends its first 1023 steps at the first grid update where x drops through the 59.0 Hz UFLS
 threshold (old x above, new x below). `excess` is the first window after the limit window where |i_raw|
-stays above Imax on every step, so the fb term acts all the way through. The trip is at step 1,000,000. Only Imax 1.0 and 1.2 pu are supported; 2 pu or more means no limit.
+stays above Imax on every step, so the fb term acts all the way through. Every case starts from the same state; the cases differ only in method, limit mode and trip size.
+Cases without `a` lose 3.3 GW at the trip (trip B); cases with `a` lose 1.4 GW (trip A, one nuclear unit).
+With no limit, sat and fb give the same windows byte for byte (the fb term is always 0); the generator
+stops with an error if they ever differ.
+The trip is at step 1,000,000. Only Imax 1.0 and 1.2 pu are supported; 2 pu or more means no limit.

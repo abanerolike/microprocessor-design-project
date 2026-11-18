@@ -10,6 +10,7 @@ PACKAGE gfm_pkg IS
 	TYPE values IS ARRAY (0 TO 6) OF INTEGER;
 	TYPE words IS ARRAY (NATURAL RANGE <>) OF SIGNED(31 DOWNTO 0);
 	TYPE seeds IS ARRAY (0 TO 191) OF INTEGER RANGE 0 TO 131071;
+	TYPE segs IS ARRAY (0 TO 7) OF STD_LOGIC_VECTOR(6 DOWNTO 0);   -- HEX0..7, gfedcba, active low
 
 	-- grid model for H = 3.3 s, D = 2, K/R = 6, Tg = 3 s, r = 10 %, all per 1.024 ms update.
 	-- A new H (or D, K, R, Tg, r) changes both the integer and its F, so the two are kept together.
@@ -70,6 +71,27 @@ PACKAGE gfm_pkg IS
 	CONSTANT THR : values := (-35791394, -42949673, -50107952, -57266231, -64424509, -71582788, -35791394);
 	CONSTANT LIM : counts := (98, 98, 98, 98, 98, 98, 11719);
 	CONSTANT AMT : values := (128849019, 128849019, 128849019, 128849019, 128849019, 107374182, 85899346);
+
+	-- board scenario (r = 10 %, P0 = 0.9), Q28 unless noted
+	CONSTANT SP0 : INTEGER := 241591910;
+	CONSTANT SDP : INTEGER := 88583700;  -- lost generation, trip B 3.3 GW, Q31
+	CONSTANT SDA : INTEGER := 37580964;  -- trip A 1.4 GW
+	CONSTANT SCP : INTEGER := 26843546;  -- reserve cap, Q31
+	CONSTANT SPG : INTEGER := 14258;     -- pre-trip grid power, Q14
+	CONSTANT SKS : INTEGER := 104858;    -- fb gain 0.2 at F 19
+	CONSTANT SI0 : INTEGER := 322122547; -- 1.2 pu
+	CONSTANT SI1 : INTEGER := 268435456; -- 1.0 pu, 10 s after the trip
+	CONSTANT SKT : INTEGER := 1000000;   -- automatic trip step (1 s)
+	CONSTANT SNC : INTEGER := 10000;     -- steps per 0.01 s
+	CONSTANT SNW : INTEGER := 1000;      -- 0.01 s units from the trip to the 1.0 pu limit
+
+	-- start state (step 0 of every case): device and controller words in vector-line order, inverter
+	-- phase. The grid side starts at 0 with every UFLS stage armed.
+	CONSTANT ST_D : words(0 TO 17) := (
+		X"0CF1982E", X"06928922", X"0EC86F0A", X"05F0F859", X"0DEC9B09", X"0421FC72",
+		X"0E75ED1F", X"0145815C", X"0FEEB90C", X"0000037E", X"0E75F0A7", X"FEA472FB",
+		X"FFFFB557", X"FFFFE3EB", X"00019541", X"00002427", X"0E667C50", X"015A1CE2");
+	CONSTANT ST_TH : UNSIGNED(39 DOWNTO 0) := X"0F91EB84C9";
 
 	FUNCTION rs (v : SIGNED; n : NATURAL) RETURN SIGNED;
 	FUNCTION sat (v : SIGNED; w : POSITIVE) RETURN SIGNED;
