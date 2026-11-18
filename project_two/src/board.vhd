@@ -12,14 +12,18 @@ USE work.gfm_pkg.ALL;
 --   LEDG2 the 1.0 pu limit is in force, LEDG3 fb, LEDG4 automatic trip, LEDG5 page 1, LEDG6 blinks while
 --   the model runs, LEDG7 the limiter has acted since reset, LEDG8 reserved limit mode set
 --   Setting LEDs show what was read at reset; LEDG5 shows the live page (after its two flip-flops).
+--   The LCD names the run (line 1) and labels the HEX groups with their units (line 2, follows the page).
 ENTITY board IS
-	GENERIC (nr : INTEGER := 5000000);              -- display refresh, clocks (0.1 s)
+	GENERIC (nr : INTEGER := 5000000;               -- display refresh, clocks (0.1 s)
+		us : INTEGER := 50);                        -- clocks per microsecond for the LCD waits
 	PORT (CLOCK_50 : IN STD_LOGIC;
 		KEY  : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 		SW   : IN STD_LOGIC_VECTOR(17 DOWNTO 0);
 		HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7 : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
 		LEDR : OUT STD_LOGIC_VECTOR(17 DOWNTO 0);
-		LEDG : OUT STD_LOGIC_VECTOR(8 DOWNTO 0));
+		LEDG : OUT STD_LOGIC_VECTOR(8 DOWNTO 0);
+		LCD_DATA : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		LCD_RW, LCD_EN, LCD_RS, LCD_ON, LCD_BLON : OUT STD_LOGIC);
 END board;
 
 ARCHITECTURE a OF board IS
@@ -43,6 +47,10 @@ BEGIN
 		Z32, Z28, TK0, AR0, OPEN, step, OPEN, OPEN, OPEN, x, OPEN, shed, OPEN, OPEN, armed, OPEN, OPEN, OPEN, OPEN,
 		OPEN, OPEN, OPEN, lim, OPEN, OPEN, OPEN, OPEN, OPEN);
 	ds : ENTITY work.disp GENERIC MAP (nr) PORT MAP (CLOCK_50, step, pg, tr, x, xmin, shed, t, hex);
+	lc : ENTITY work.lcd GENERIC MAP (us) PORT MAP (CLOCK_50, pg, fb, ta, lm, LCD_RS, LCD_EN, LCD_DATA);
+	LCD_RW <= '0';
+	LCD_ON <= '1';
+	LCD_BLON <= '1';
 
 	HEX0 <= hex(0);
 	HEX1 <= hex(1);
