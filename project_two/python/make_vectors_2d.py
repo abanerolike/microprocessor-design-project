@@ -38,7 +38,8 @@ if sys.argv[1:] not in ([], ["check"]):                # a typo must not fall ba
 CHECK = sys.argv[1:] == ["check"]
 DIFF = []
 SIG = [("v1_r", 34), ("v1_i", 34), ("il_r", 32), ("il_i", 32), ("lim", 2), ("exc", 33), ("dm", 18),
-       ("inc", 26), ("incg", 25), ("pg", 18), ("th_c", 18), ("th_s", 18), ("thg_c", 18), ("thg_s", 18)]
+       ("inc", 26), ("incg", 25), ("pg", 18), ("th_c", 18), ("th_s", 18), ("thg_c", 18), ("thg_s", 18),
+       ("ir_r", 32), ("ir_i", 32), ("wm1", 27), ("xw_r", 31), ("xw_i", 31), ("uv1_r", 24), ("uv1_i", 24)]
 
 
 def emit(name, lines):
@@ -150,7 +151,35 @@ def write_window(name, wname, k_start, ki, kf, sc, meth, tab, s_base):
     emit(f"{name}_{wname}_sig.txt", [" ".join(hx(v, b) for v, (_, b) in zip(r, SIG)) for r in sig])
 
 
+def limiter_cases():
+    """Boundary cases of the current limiter, for its own testbench: the decision threshold below, at and
+    above (exactly at it only exists for 1.0 pu), operand rounding, zero, each exponent change of the
+    normalizer, all four quadrants, no-limit mode, and random inputs. Imax alternates between cases.
+    Line: Imax (Q28), en, ir re, ir im, then the expected lim, exc, il re, il im."""
+    rng, cnt, out = np.random.default_rng(7), np.zeros(1, dtype=np.int64), []
+    for imx_pu in (1.0, 1.2, 10.0):
+        imx = round(imx_pu * 2**fx.F)
+        hw = imx if imx_pu < 2 else 1 << fx.F
+        th = hw - (hw >> 11)
+        t = (th * th) >> (2 * fx.F - 2 * fx.OPF)
+        r = int(np.sqrt(t))
+        ops = [(r - 1, 0), (r, 0), (r + 1, 0), (0, r + 1), (-r - 1, 0), (0, -r - 1), (0, 0), (131071, 131071),
+               (-131072, -131072), (-131072, 131071)]
+        ops += [((1 << q // 2) + d, 0) for q in (28, 30, 32) for d in (-1, 0, 1)]
+        ops += [(-131071, 0), (-131072, 0), (-131072, 1)]             # m2 = 2^34 needs the negative end
+        wide = [(a << 14, b << 14) for a, b in ops] + [((r << 14) + 8191, 0), ((r << 14) + 8192, 0),
+                                                         ((r + 1 << 14) - 8193, 0), ((r + 1 << 14) - 8192, 0)]
+        wide += [(int(a), int(b)) for a, b in rng.integers(-2**31, 2**31, size=(40, 2))]
+        for irr, iri in wide:
+            ilr, ili, exc, m2 = fx.limit(irr, iri, imx, cnt)
+            lim = int(imx_pu < 2 and m2 > t)
+            out.append(" ".join([hx(hw, 32), str(int(imx_pu < 2)), hx(irr, 32), hx(iri, 32), str(lim),
+                                 hx(exc, 33), hx(ilr, 32), hx(ili, 32)]))
+    return out
+
+
 OUT.mkdir(parents=True, exist_ok=True)
+emit("limcases.txt", limiter_cases())
 emit("rom_sin.hex", [hx(v, 18) for v in fx.SIN])
 emit("rom_seed.hex", [hx(v, 18) for v in fx.SEED])
 for name, kw in CASES.items():

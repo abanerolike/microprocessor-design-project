@@ -1,12 +1,15 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
+USE ieee.math_real.ALL;
 
 -- Rounding, saturation and fixed constants shared by the model modules. Every constant is an 18-bit
 -- integer c with its own fraction bits F (value = c / 2^F), the same numbers the vector files carry.
 PACKAGE gfm_pkg IS
 	TYPE counts IS ARRAY (0 TO 6) OF INTEGER RANGE 0 TO 16383;
 	TYPE values IS ARRAY (0 TO 6) OF INTEGER;
+	TYPE words IS ARRAY (NATURAL RANGE <>) OF SIGNED(31 DOWNTO 0);
+	TYPE seeds IS ARRAY (0 TO 191) OF INTEGER RANGE 0 TO 131071;
 
 	-- grid model for H = 3.3 s, D = 2, K/R = 6, Tg = 3 s, r = 10 %, all per 1.024 ms update.
 	-- A new H (or D, K, R, Tg, r) changes both the integer and its F, so the two are kept together.
@@ -41,6 +44,28 @@ PACKAGE gfm_pkg IS
 	CONSTANT R2  : INTEGER := 75621;     -- r2 + rg
 	CONSTANT FR2 : INTEGER := 21;
 
+	-- controller: measurement and power filters, 1 - exp(-wc Ts)
+	CONSTANT AF1 : INTEGER := 83781;
+	CONSTANT FF1 : INTEGER := 25;
+	CONSTANT AF2 : INTEGER := 107369;
+	CONSTANT FF2 : INTEGER := 30;
+	-- droop, voltage PI (Ts kiv for the integral, Ts kiv / kpv for anti-windup), current PI (Ts kii), fb gain ks
+	CONSTANT KDP : INTEGER := 83886;     -- dp
+	CONSTANT FDP : INTEGER := 23;
+	CONSTANT KDQ : INTEGER := 104858;    -- dq
+	CONSTANT FDQ : INTEGER := 21;
+	CONSTANT KPV : INTEGER := 75497;
+	CONSTANT FPV : INTEGER := 15;
+	CONSTANT KIV : INTEGER := 123695;
+	CONSTANT FIV : INTEGER := 29;
+	CONSTANT KAW : INTEGER := 107374;
+	CONSTANT FAW : INTEGER := 30;
+	CONSTANT KPI : INTEGER := 113778;
+	CONSTANT FPI : INTEGER := 19;
+	CONSTANT KII : INTEGER := 93207;
+	CONSTANT FII : INTEGER := 33;
+	CONSTANT FKS : INTEGER := 19;        -- ks is an input (0 or below 0.25), always at F 19
+
 	-- UFLS stages: frequency threshold on x (Q31), delay in 1.024 ms ticks, load shed (Q31)
 	CONSTANT THR : values := (-35791394, -42949673, -50107952, -57266231, -64424509, -71582788, -35791394);
 	CONSTANT LIM : counts := (98, 98, 98, 98, 98, 98, 11719);
@@ -48,13 +73,19 @@ PACKAGE gfm_pkg IS
 
 	FUNCTION rs (v : SIGNED; n : NATURAL) RETURN SIGNED;
 	FUNCTION sat (v : SIGNED; w : POSITIVE) RETURN SIGNED;
+	FUNCTION op (v : SIGNED) RETURN SIGNED;
+	FUNCTION seed RETURN seeds;
+	CONSTANT SEED_ROM : seeds;
 END gfm_pkg;
 
 PACKAGE BODY gfm_pkg IS
-	-- shift right by n, rounding half up
+	-- shift right by n, rounding half up (the half is built by a shift: 2^(n-1) may not fit an INTEGER)
 	FUNCTION rs (v : SIGNED; n : NATURAL) RETURN SIGNED IS
 	BEGIN
-		RETURN SHIFT_RIGHT(v + 2 ** (n - 1), n);
+		IF n = 0 THEN
+			RETURN v;
+		END IF;
+		RETURN SHIFT_RIGHT(v + SHIFT_LEFT(TO_SIGNED(1, v'LENGTH), n - 1), n);
 	END rs;
 
 	-- clamp to a w-bit signed range
@@ -67,4 +98,24 @@ PACKAGE BODY gfm_pkg IS
 		END IF;
 		RETURN r;
 	END sat;
+
+	-- Q(32,28) state to an 18-bit Q14 multiplier operand
+	FUNCTION op (v : SIGNED) RETURN SIGNED IS
+	BEGIN
+		RETURN sat(rs(RESIZE(v, 33), 14), 18);
+	END op;
+
+	-- first guess of 1/sqrt(u) for u in [1, 4) in 192 steps of 1/64, Q17, taken at the top of each step and
+	-- rounded down so it never overshoots: floor(2^20 / sqrt(n)), n = 65..256. Only n = 256 gives an exact
+	-- integer; the 1e-9 keeps a square root that comes out a hair high from flooring it to one less
+	FUNCTION seed RETURN seeds IS
+		VARIABLE t : seeds;
+	BEGIN
+		FOR i IN t'RANGE LOOP
+			t(i) := INTEGER(FLOOR(2.0 ** 20 / SQRT(REAL(i + 65)) + 1.0E-9));
+		END LOOP;
+		RETURN t;
+	END seed;
+
+	CONSTANT SEED_ROM : seeds := seed;
 END gfm_pkg;

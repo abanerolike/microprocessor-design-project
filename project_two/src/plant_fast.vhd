@@ -36,14 +36,9 @@ ARCHITECTURE a OF plant_fast IS
 		RETURN RESIZE(rs(v, n), 36);
 	END r36;
 
-	-- Q(32,28) to an 18-bit Q14 operand
-	FUNCTION op (v : SIGNED) RETURN SIGNED IS
-	BEGIN
-		RETURN RESIZE(sat(rs(RESIZE(v, 33), 14), 18), 36);
-	END op;
 BEGIN
 	WITH c SELECT ma <=
-		RESIZE(i1r, 36) WHEN 0 | 2, RESIZE(i1i, 36) WHEN 1 | 5, op(i2r) WHEN 3, op(i2i) WHEN 4,
+		RESIZE(i1r, 36) WHEN 0 | 2, RESIZE(i1i, 36) WHEN 1 | 5, RESIZE(op(i2r), 36) WHEN 3, RESIZE(op(i2i), 36) WHEN 4,
 		RESIZE(vcr, 36) WHEN 6, RESIZE(vci, 36) WHEN 7, RESIZE(i2r, 36) WHEN 8 | 10, RESIZE(i2i, 36) WHEN 9 | 11,
 		s WHEN OTHERS;
 	WITH c SELECT mb <=
