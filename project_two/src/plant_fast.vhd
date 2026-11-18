@@ -11,9 +11,10 @@ USE work.gfm_pkg.ALL;
 -- The products of step-k states are formed first (c = 0..11), so only the chain that starts with v1 is
 -- left for the end of the step. One shared 36 x 18 multiplier; the clock c picks its inputs:
 --   0, 1 r1 i1   2, 5 xl1 i1   3, 4 vg . i2 (grid power)   6, 7 bc vc   8, 9 r2 i2   10, 11 xl2 i2
---   30, 31 a1   33, 34 ac   36, 37 a2
--- sg must be valid from c = 2, cg from c = 3, v1 from c = 29. pg is valid from c = 6. The new states are
--- held in n1, nc, n2 and written to i1, vc, i2 at the edge that ends c = 49.
+--   34, 35 a1   37, 38 ac   40, 41 a2
+-- sg must be valid from c = 2, cg from c = 3, v1 from c = 33 (the controller writes it at the edge that
+-- ends c = 32). pg is valid from c = 6. The new states are held in n1, nc, n2 (the last one written at the
+-- edge that ends c = 42) and copied to i1, vc, i2 at the edge that ends c = 49.
 ENTITY plant_fast IS
 	PORT (clk, load, step : IN STD_LOGIC;
 		c        : IN INTEGER RANGE 0 TO 49;
@@ -48,7 +49,7 @@ BEGIN
 	WITH c SELECT mb <=
 		TO_SIGNED(R1, 18) WHEN 0 | 1, TO_SIGNED(XL1, 18) WHEN 2 | 5, cg WHEN 3, sg WHEN 4,
 		TO_SIGNED(BC, 18) WHEN 6 | 7, TO_SIGNED(R2, 18) WHEN 8 | 9, TO_SIGNED(XL2, 18) WHEN 10 | 11,
-		TO_SIGNED(A1, 18) WHEN 30 | 31, TO_SIGNED(AC, 18) WHEN 33 | 34, TO_SIGNED(A2, 18) WHEN OTHERS;
+		TO_SIGNED(A1, 18) WHEN 34 | 35, TO_SIGNED(AC, 18) WHEN 37 | 38, TO_SIGNED(A2, 18) WHEN OTHERS;
 
 	PROCESS (clk)
 	BEGIN
@@ -67,20 +68,20 @@ BEGIN
 				WHEN 10 => e3i <= -SHIFT_LEFT(RESIZE(sg, 36), 12) - r36(p, FR2);
 				WHEN 11 => e3i <= e3i - r36(p, FX2);
 				WHEN 12 => e3r <= e3r + r36(p, FX2);
-				WHEN 29 => s <= RESIZE(v1r, 36) + e1r;
-				WHEN 30 => s <= RESIZE(v1i, 36) + e1i;
-				WHEN 31 => n1r <= sat(RESIZE(i1r, 36) + r36(p, FA1), 32);
-				WHEN 32 =>
+				WHEN 33 => s <= RESIZE(v1r, 36) + e1r;
+				WHEN 34 => s <= RESIZE(v1i, 36) + e1i;
+				WHEN 35 => n1r <= sat(RESIZE(i1r, 36) + r36(p, FA1), 32);
+				WHEN 36 =>
 					n1i <= sat(RESIZE(i1i, 36) + r36(p, FA1), 32);
 					s <= RESIZE(n1r, 36) + b2r;
-				WHEN 33 => s <= RESIZE(n1i, 36) + b2i;
-				WHEN 34 => ncr <= sat(RESIZE(vcr, 36) + r36(p, FAC), 32);
-				WHEN 35 =>
+				WHEN 37 => s <= RESIZE(n1i, 36) + b2i;
+				WHEN 38 => ncr <= sat(RESIZE(vcr, 36) + r36(p, FAC), 32);
+				WHEN 39 =>
 					nci <= sat(RESIZE(vci, 36) + r36(p, FAC), 32);
 					s <= RESIZE(ncr, 36) + e3r;
-				WHEN 36 => s <= RESIZE(nci, 36) + e3i;
-				WHEN 37 => n2r <= sat(RESIZE(i2r, 36) + r36(p, FA2), 32);
-				WHEN 38 => n2i <= sat(RESIZE(i2i, 36) + r36(p, FA2), 32);
+				WHEN 40 => s <= RESIZE(nci, 36) + e3i;
+				WHEN 41 => n2r <= sat(RESIZE(i2r, 36) + r36(p, FA2), 32);
+				WHEN 42 => n2i <= sat(RESIZE(i2i, 36) + r36(p, FA2), 32);
 				WHEN OTHERS => NULL;
 			END CASE;
 			IF load = '1' THEN

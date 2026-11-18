@@ -9,7 +9,7 @@ USE work.gfm_pkg.ALL;
 --   first the LCL constants and their F in gfm_pkg must equal the config file
 --   line k gives i1, vc, i2 at the start of step k; the _sig line k gives v1, pg and the grid sin and cos.
 --   Each input is given only from the clock it is ready in the step schedule (sg from c = 2, cg from 3,
---   v1 from 29) and bit-inverted before, so a module that reads one early fails
+--   v1 from 33) and bit-inverted before, so a module that reads one early fails
 --   every clock of step k: the six states equal line k (new values only after the edge that ends c = 49),
 --   pg equals the _sig value from c = 6
 --   the run ends with every line read, exactly nsteps steps, the last state right, and no errors
@@ -139,7 +139,7 @@ BEGIN
 			sg <= vs;
 			WAIT UNTIL clk = '1' AND clk'EVENT AND c = 2 FOR 51 * 20 ns;
 			cg <= vc;
-			WAIT UNTIL clk = '1' AND clk'EVENT AND c = 28 FOR 51 * 20 ns;
+			WAIT UNTIL clk = '1' AND clk'EVENT AND c = 32 FOR 51 * 20 ns;
 			v1r <= vr;
 			v1i <= vi;
 			WAIT UNTIL clk = '1' AND clk'EVENT AND step = '1' FOR 51 * 20 ns;

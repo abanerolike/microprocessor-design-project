@@ -10,7 +10,7 @@ USE work.tb_util.ALL;
 --   first every table entry: with phase i * 2^30 (no fraction) sn = rom(i) and cs = rom(i + 256)
 --   every clock of step k: both phases equal line k (so a new phase must appear right after the edge that
 --   ends c = 49, and not earlier), sn equals the step-k value from c = 2 and cs from c = 3
---   the phase steps are given only from the clock the step schedule makes them ready (inc from c = 26,
+--   the phase steps are given only from the clock the step schedule makes them ready (inc from c = 30,
 --   incg from c = 2) and the bit-inverted value before that, so an nco that takes them early fails
 --   the run ends with every line read, exactly nsteps steps, the last new phase right, and no errors
 ENTITY nco_tb IS
@@ -28,7 +28,7 @@ ARCHITECTURE a OF nco_tb IS
 	SIGNAL ip, iq : SIGNED(25 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL cp, sp, cq, sq, ecp, esp, ecq, esq : SIGNED(17 DOWNTO 0) := (OTHERS => '0');
 	TYPE table IS ARRAY (0 TO 1023) OF SIGNED(17 DOWNTO 0);
-	CONSTANT ci : INTEGER := 26;
+	CONSTANT ci : INTEGER := 30;
 	CONSTANT cg : INTEGER := 2;
 
 	-- step number and the two phases of one window line; the 18 words before them are skipped

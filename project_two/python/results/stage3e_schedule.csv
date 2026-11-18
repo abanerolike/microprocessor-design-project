@@ -1,0 +1,111 @@
+op,block,cls,unit,start,valid_from,deps
+sp_ii,1,A,B,0,2,
+sp_ir,1,A,B,1,3,
+i1rot_as,1,A,B,2,4,th_s
+i1rot_ac,1,A,B,3,5,th_c
+i1rot_bc,1,A,B,4,6,th_c
+i1rot_bs,1,A,B,5,7,th_s
+i1rot_i,1,ADD,-,6,7,i1rot_bc i1rot_as
+i2rot_ac,1,A,B,6,8,th_c
+i1f_d_i,1,ADD,-,7,8,i1rot_i
+i1rot_r,1,ADD,-,7,8,i1rot_ac i1rot_bs
+i2rot_as,1,A,B,7,9,th_s
+i1f_d_r,1,ADD,-,8,9,i1rot_r
+i2rot_bc,1,A,B,8,10,th_c
+i2rot_bs,1,A,B,9,11,th_s
+i2rot_i,1,ADD,-,10,11,i2rot_bc i2rot_as
+sp_ri,1,A,B,10,12,
+i2f_d_i,1,ADD,-,11,12,i2rot_i
+i2rot_r,1,ADD,-,11,12,i2rot_ac i2rot_bs
+sp_rr,1,A,B,11,13,
+i2f_d_r,1,ADD,-,12,13,i2rot_r
+sp_i,1,ADD,-,12,13,sp_ir sp_ri
+vcrot_ac,1,A,B,12,14,th_c
+qf_d,1,ADD,-,13,14,sp_i
+sp_r,1,ADD,-,13,14,sp_rr sp_ii
+vcrot_as,1,A,B,13,15,th_s
+pf_d,1,ADD,-,14,15,sp_r
+vcrot_bc,1,A,B,14,16,th_c
+vcrot_bs,1,A,B,15,17,th_s
+i1f_m_i,1,B,B,16,18,i1f_d_i
+vcrot_i,1,ADD,-,16,17,vcrot_bc vcrot_as
+i1f_m_r,1,B,B,17,19,i1f_d_r
+vcf_d_i,1,ADD,-,17,18,vcrot_i
+vcrot_r,1,ADD,-,17,18,vcrot_ac vcrot_bs
+i1f_i,1,ADD,-,18,19,i1f_m_i
+i2f_m_i,1,B,B,18,20,i2f_d_i
+vcf_d_r,1,ADD,-,18,19,vcrot_r
+i1f_r,1,ADD,-,19,20,i1f_m_r
+i2f_m_r,1,B,B,19,21,i2f_d_r
+i2f_i,1,ADD,-,20,21,i2f_m_i
+pf_m,1,B,B,20,22,pf_d
+i2f_r,1,ADD,-,21,22,i2f_m_r
+qf_m,1,B,B,21,23,qf_d
+pf,1,ADD,-,22,23,pf_m
+vcf_m_i,1,B,B,22,24,vcf_d_i
+qf,1,ADD,-,23,24,qf_m
+vcf_m_r,1,B,B,23,25,vcf_d_r
+vcf_i,1,ADD,-,24,25,vcf_m_i
+vcf_r,1,ADD,-,25,26,vcf_m_r
+dpf,2,ADD,-,0,1,
+vref_m,2,B,B,0,2,
+wm1,2,B,B,1,3,dpf
+ip_i,2,B,B,2,4,
+vref,2,ADD,-,2,3,vref_m
+ev_r,2,ADD,-,3,4,vref
+uv1_i,2,B,B,3,5,
+wop,2,ADD,-,3,4,wm1
+wv_i,2,A,B,4,6,wop
+wv_r,2,A,B,5,7,wop
+ff_i,2,B,B,6,8,wv_i
+ff_r,2,B,B,7,9,wv_r
+ip_r,2,B,B,8,10,ev_r
+ir_i,2,ADD,-,9,10,ip_i ff_r
+wi_i,2,A,B,9,11,wop
+ir_r,2,ADD,-,10,11,ip_r ff_i
+wi_r,2,A,B,10,12,wop
+xw_i,2,B,B,11,13,wi_i
+xw_r,2,B,B,12,14,wi_r
+uv1_r,2,B,B,13,15,ev_r
+io_i,3,ADD,-,10,11,ir_i
+io_r,3,ADD,-,11,12,ir_r
+sq_i,3,A,A,11,12,io_i
+sq_r,3,A,A,12,13,io_r
+m2,3,ADD,-,13,14,sq_r sq_i
+lim,3,ADD,-,14,15,m2
+norm,3,ADD,-,14,15,m2
+seed,3,ROM,-,15,16,norm
+y2,3,A,A,16,17,seed
+uy2,3,B,C,17,19,norm y2
+z,3,ADD,-,19,20,uy2
+y1,3,B,C,20,22,seed z
+scl,3,B,C,22,24,y1 norm
+mag,3,C,C,23,25,norm y1
+il_i,3,B,C,24,26,ir_i scl norm lim
+exc,3,ADD,-,25,26,mag lim
+il_r,3,B,C,25,27,ir_r scl norm lim
+aw_d_i,4,ADD,-,26,27,il_i ir_i
+de_i,4,ADD,-,26,27,il_i
+dmk,4,B,B,26,28,exc
+aw_d_r,4,ADD,-,27,28,il_r ir_r
+de_r,4,ADD,-,27,28,il_r
+kp_i,4,B,B,27,29,de_i
+dm,4,ADD,-,28,29,wm1 dmk
+kp_r,4,B,B,28,30,de_r
+aw_i,4,B,B,29,31,aw_d_i
+inc,4,A,A,29,30,dm
+v1c_i,4,ADD,-,29,30,kp_i xw_r
+aw_r,4,B,B,30,32,aw_d_r
+v1_bc,4,A,A,30,31,v1c_i th_c
+v1_bs,4,A,A,30,31,v1c_i th_s
+v1c_r,4,ADD,-,30,31,kp_r xw_i
+ui1_i,4,B,B,31,33,de_i
+uv_i,4,ADD,-,31,32,uv1_i aw_i
+v1_ac,4,A,A,31,32,v1c_r th_c
+v1_as,4,A,A,31,32,v1c_r th_s
+ui1_r,4,B,B,32,34,de_r
+uv_r,4,ADD,-,32,33,uv1_r aw_r
+v1_i,4,ADD,-,32,33,v1_as v1_bc
+v1_r,4,ADD,-,32,33,v1_ac v1_bs
+ui_i,4,ADD,-,33,34,ui1_i
+ui_r,4,ADD,-,34,35,ui1_r
