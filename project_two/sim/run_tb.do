@@ -3,9 +3,9 @@
 onerror {quit -code 1}
 onbreak {quit -code 1}
 vlib work
-vcom -93 tb_util.vhd ../src/gfm_pkg.vhd ../src/tick.vhd ../src/nco.vhd ../src/plant_slow.vhd
-vcom -93 hrd_tb.vhd tick_tb.vhd nco_tb.vhd plant_slow_tb.vhd plant_slow_edge_tb.vhd
-foreach t {hrd_tb plant_slow_edge_tb} {
+vcom -93 tb_util.vhd ../src/gfm_pkg.vhd ../src/tick.vhd ../src/nco.vhd ../src/plant_slow.vhd ../src/plant_fast.vhd
+vcom -93 hrd_tb.vhd tick_tb.vhd nco_tb.vhd plant_slow_tb.vhd plant_slow_edge_tb.vhd plant_fast_tb.vhd plant_fast_edge_tb.vhd
+foreach t {hrd_tb plant_slow_edge_tb plant_fast_edge_tb} {
 	vsim -c $t
 	run -all
 	quit -sim
@@ -20,8 +20,10 @@ foreach f [lsort [glob vectors/*_*.txt]] {
 	vsim -c -gfname=$r nco_tb
 	run -all
 	quit -sim
-	vsim -c -gfname=$r -gcname=$cfg plant_slow_tb
-	run -all
-	quit -sim
+	foreach t {plant_slow_tb plant_fast_tb} {
+		vsim -c -gfname=$r -gcname=$cfg $t
+		run -all
+		quit -sim
+	}
 }
 quit -code 0

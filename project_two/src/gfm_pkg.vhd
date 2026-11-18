@@ -23,6 +23,24 @@ PACKAGE gfm_pkg IS
 	CONSTANT KPH : INTEGER := 128849;    -- phase count per microsecond at 1 pu speed
 	CONSTANT FKP : INTEGER := -9;
 
+	-- LCL filter and grid tie, semi-implicit Euler per microsecond (SCR 5)
+	CONSTANT A1  : INTEGER := 128849;    -- Ts wb / xL1
+	CONSTANT FA1 : INTEGER := 24;
+	CONSTANT AC  : INTEGER := 76650;     -- Ts wb / bC
+	CONSTANT FAC : INTEGER := 25;
+	CONSTANT A2  : INTEGER := 121636;    -- Ts wb / (xL2 + xg)
+	CONSTANT FA2 : INTEGER := 27;
+	CONSTANT BC  : INTEGER := 86524;     -- bC, capacitor cross term
+	CONSTANT FBC : INTEGER := 19;
+	CONSTANT XL1 : INTEGER := 102944;
+	CONSTANT FX1 : INTEGER := 21;
+	CONSTANT R1  : INTEGER := 116508;
+	CONSTANT FR1 : INTEGER := 28;
+	CONSTANT XL2 : INTEGER := 109048;    -- xL2 + xg
+	CONSTANT FX2 : INTEGER := 18;
+	CONSTANT R2  : INTEGER := 75621;     -- r2 + rg
+	CONSTANT FR2 : INTEGER := 21;
+
 	-- UFLS stages: frequency threshold on x (Q31), delay in 1.024 ms ticks, load shed (Q31)
 	CONSTANT THR : values := (-35791394, -42949673, -50107952, -57266231, -64424509, -71582788, -35791394);
 	CONSTANT LIM : counts := (98, 98, 98, 98, 98, 98, 11719);
