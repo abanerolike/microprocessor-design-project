@@ -13,9 +13,12 @@ USE work.gfm_pkg.ALL;
 --   the model runs, LEDG7 the limiter has acted since reset, LEDG8 reserved limit mode set
 --   Setting LEDs show what was read at reset; LEDG5 shows the live page (after its two flip-flops).
 --   The LCD names the run (line 1) and labels the HEX groups with their units (line 2, follows the page).
+--   VGA: frequency and |i1| over the last 20.97 s, cleared by a reset, with the settings and the HEX
+--   values as text.
 ENTITY board IS
 	GENERIC (nr : INTEGER := 5000000;               -- display refresh, clocks (0.1 s)
-		us : INTEGER := 50);                        -- clocks per microsecond for the LCD waits
+		us : INTEGER := 50;                         -- clocks per microsecond for the LCD waits
+		nk : INTEGER := 40960);                     -- model steps per graph column
 	PORT (CLOCK_50 : IN STD_LOGIC;
 		KEY  : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 		SW   : IN STD_LOGIC_VECTOR(17 DOWNTO 0);
@@ -23,7 +26,9 @@ ENTITY board IS
 		LEDR : OUT STD_LOGIC_VECTOR(17 DOWNTO 0);
 		LEDG : OUT STD_LOGIC_VECTOR(8 DOWNTO 0);
 		LCD_DATA : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-		LCD_RW, LCD_EN, LCD_RS, LCD_ON, LCD_BLON : OUT STD_LOGIC);
+		LCD_RW, LCD_EN, LCD_RS, LCD_ON, LCD_BLON : OUT STD_LOGIC;
+		VGA_R, VGA_G, VGA_B : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
+		VGA_CLK, VGA_HS, VGA_VS, VGA_BLANK, VGA_SYNC : OUT STD_LOGIC);
 END board;
 
 ARCHITECTURE a OF board IS
@@ -40,17 +45,26 @@ ARCHITECTURE a OF board IS
 	SIGNAL t2 : SIGNED(37 DOWNTO 0);
 	SIGNAL armed : STD_LOGIC_VECTOR(0 TO 6);
 	SIGNAL hex : segs;
+	SIGNAL d : words(0 TO 17);
+	SIGNAL dd : STD_LOGIC_VECTOR(63 DOWNTO 0);
+	SIGNAL db : STD_LOGIC_VECTOR(0 TO 3);
+	SIGNAL dt : STD_LOGIC;
+	SIGNAL lo : SIGNED(31 DOWNTO 0);
 BEGIN
 	sc : ENTITY work.scen PORT MAP (CLOCK_50, step, lim, KEY, SW(4 DOWNTO 0), SW(17), x, load, dp, cap, p0, imx, pg0,
 		ks, t2, en, lm, pg, fb, ta, au, err, tr, sh, seen, blink, xmin, t);
 	cr : ENTITY work.core PORT MAP (CLOCK_50, load, 0, dp, cap, pg0, ks, p0, imx, t2, en, ST_D, ST_TH, Z40, Z32, Z32,
-		Z32, Z28, TK0, AR0, OPEN, step, OPEN, OPEN, OPEN, x, OPEN, shed, OPEN, OPEN, armed, OPEN, OPEN, OPEN, OPEN,
+		Z32, Z28, TK0, AR0, OPEN, step, d, OPEN, OPEN, x, OPEN, shed, OPEN, OPEN, armed, OPEN, OPEN, OPEN, OPEN,
 		OPEN, OPEN, OPEN, lim, OPEN, OPEN, OPEN, OPEN, OPEN);
-	ds : ENTITY work.disp GENERIC MAP (nr) PORT MAP (CLOCK_50, step, pg, tr, x, xmin, shed, t, hex);
+	ds : ENTITY work.disp GENERIC MAP (nr) PORT MAP (CLOCK_50, step, pg, tr, x, xmin, shed, t, hex, dd, db, dt,
+		lo);
 	lc : ENTITY work.lcd GENERIC MAP (us) PORT MAP (CLOCK_50, pg, fb, ta, lm, LCD_RS, LCD_EN, LCD_DATA);
 	LCD_RW <= '0';
 	LCD_ON <= '1';
 	LCD_BLON <= '1';
+	vg : ENTITY work.screen GENERIC MAP (nk) PORT MAP (CLOCK_50, load, step, lim, en, tr, sh, ta, fb, au, dt,
+		lm, dd, db, lo, x, d(0), d(1), shed, imx, VGA_R, VGA_G, VGA_B, VGA_CLK, VGA_HS, VGA_VS, VGA_BLANK);
+	VGA_SYNC <= '0';
 
 	HEX0 <= hex(0);
 	HEX1 <= hex(1);

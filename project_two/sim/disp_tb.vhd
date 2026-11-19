@@ -9,7 +9,8 @@ USE work.gfm_pkg.ALL;
 --   1..6 -> 2800, a negative shed -> Err; time 1234, 0000, 9999, 10000 -> Err; ---- on HEX3..0 before
 --   the trip on both pages
 --   the inputs are copied on the clock after a step pulse (one every 5 clocks here); the lowest
---   frequency shown is the lower of x and xmin (5978 when x is below xmin)
+--   frequency shown is the lower of x and xmin (5978 when x is below xmin); the copy for the VGA text has
+--   the same digits, the trip flag and the lowest x itself (not rounded)
 --   all eight digits change together: x and xmin changed at once never show an old/new mix
 --   the trip flag changes with the digits: 6000---- <-> 5500 5400, back and forth six times; all eight
 --   digits are compared on every clock and never show anything else. The refresh period is 320 clocks (5 rounds, a multiple of the step period), so a new
@@ -27,9 +28,13 @@ ARCHITECTURE a OF disp_tb IS
 	SIGNAL x, xmin, shed : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL t : INTEGER RANGE 0 TO 10000 := 0;
 	SIGNAL hex, h2 : segs;
-	SIGNAL x2 : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL x2, lo : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL dd : STD_LOGIC_VECTOR(63 DOWNTO 0);
+	SIGNAL db : STD_LOGIC_VECTOR(0 TO 3);
+	SIGNAL dt : STD_LOGIC;
 BEGIN
-	dut : ENTITY work.disp GENERIC MAP (320) PORT MAP (clk, step, pg, tr, x, xmin, shed, t, hex);
+	dut : ENTITY work.disp GENERIC MAP (320) PORT MAP (clk, step, pg, tr, x, xmin, shed, t, hex, dd, db,
+		dt, lo);
 	d2 : ENTITY work.disp GENERIC MAP (1000) PORT MAP (clk, step, '0', '0', x2, x2, x2, 0, h2);
 
 	PROCESS (clk)
@@ -132,6 +137,10 @@ BEGIN
 		x <= TO_SIGNED(-7730936, 32);                -- below xmin: the lowest shown is x
 		xmin <= TO_SIGNED(-7659352, 32);
 		show("59785978");
+		IF lo /= TO_SIGNED(-7730936, 32) OR dd(31 DOWNTO 0) /= x"59785978" OR dt /= '1' OR db /= "0000" THEN
+			errs := errs + 1;                        -- the copy for the VGA text: x itself, not xmin
+			REPORT "exported copy wrong" SEVERITY ERROR;
+		END IF;
 		x <= (OTHERS => '0');                        -- old pair 6000 5900
 		xmin <= TO_SIGNED(THR(0), 32);
 		show("60005900");

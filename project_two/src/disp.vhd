@@ -13,13 +13,18 @@ USE work.gfm_pkg.ALL;
 -- of the copied x and xmin, since xmin takes x one step later. One 32 x 14 multiplier and one
 -- shift-add-3 converter serve the four values in turn: 16 clocks each (b = 0 product, 1 load and range
 -- check, 2..15 one bit per clock). The digits go to the display together when all four are done, so
--- the eight digits always come from the same copy.
+-- the eight digits always come from the same copy. The same shown copy goes to the VGA text: digits,
+-- flags, trip flag and the lowest x as it was copied (for the 59.2 / 59.7 Hz check).
 ENTITY disp IS
 	GENERIC (nr : INTEGER := 5000000);              -- must be longer than one round (64) plus one step
 	PORT (clk, step, pg, tr : IN STD_LOGIC;
 		x, xmin, shed : IN SIGNED(31 DOWNTO 0);
 		t   : IN INTEGER RANGE 0 TO 10000;
-		hex : OUT segs);
+		hex : OUT segs;
+		dd  : OUT STD_LOGIC_VECTOR(63 DOWNTO 0);       -- the shown digits, value v digit i at 16 v + 4 i
+		db  : OUT STD_LOGIC_VECTOR(0 TO 3);           -- the shown out-of-range flags
+		dt  : OUT STD_LOGIC;                           -- the shown trip flag
+		lo  : OUT SIGNED(31 DOWNTO 0));                -- lowest x of the shown copy, not rounded
 END disp;
 
 ARCHITECTURE a OF disp IS
@@ -46,6 +51,7 @@ ARCHITECTURE a OF disp IS
 	SIGNAL dg, hd : sets := (OTHERS => (OTHERS => "0000"));         -- being converted, shown
 	SIGNAL bad, hb : STD_LOGIC_VECTOR(0 TO 3) := (OTHERS => '0');
 	SIGNAL due, sp, cp, htr : STD_LOGIC := '0';
+	SIGNAL hm : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL rc : INTEGER RANGE 0 TO nr - 1 := 0;
 	SIGNAL sx, sxm, ssh : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL st : INTEGER RANGE 0 TO 10000 := 0;
@@ -73,6 +79,10 @@ BEGIN
 				hd <= dg;
 				hb <= bad;
 				htr <= str;
+				hm <= sxm;
+				IF sx < sxm THEN
+					hm <= sx;
+				END IF;
 			END IF;
 			IF b = 1 THEN
 				q := RESIZE(rs(p, 31), 16);
@@ -126,7 +136,14 @@ BEGIN
 		END IF;
 	END PROCESS;
 
+	db <= hb;
+	dt <= htr;
+	lo <= hm;
 	g : FOR i IN 0 TO 3 GENERATE
+		dd(4 * i + 3 DOWNTO 4 * i) <= STD_LOGIC_VECTOR(hd(0)(i));
+		dd(4 * i + 19 DOWNTO 4 * i + 16) <= STD_LOGIC_VECTOR(hd(1)(i));
+		dd(4 * i + 35 DOWNTO 4 * i + 32) <= STD_LOGIC_VECTOR(hd(2)(i));
+		dd(4 * i + 51 DOWNTO 4 * i + 48) <= STD_LOGIC_VECTOR(hd(3)(i));
 		hex(i + 4) <= ERR(i) WHEN (pg = '0' AND hb(0) = '1') OR (pg = '1' AND hb(2) = '1')
 			ELSE seg(hd(0)(i)) WHEN pg = '0' ELSE seg(hd(2)(i));
 		hex(i) <= DASH WHEN htr = '0' ELSE ERR(i) WHEN (pg = '0' AND hb(1) = '1') OR (pg = '1' AND hb(3) = '1')

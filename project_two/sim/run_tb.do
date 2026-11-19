@@ -5,10 +5,12 @@ onbreak {quit -code 1}
 vlib work
 vcom -93 tb_util.vhd ../src/gfm_pkg.vhd ../src/tick.vhd ../src/nco.vhd ../src/plant_slow.vhd ../src/plant_fast.vhd
 vcom -93 ../src/meas.vhd ../src/vctrl.vhd ../src/limiter.vhd ../src/cctrl.vhd ../src/controller.vhd ../src/core.vhd
-vcom -93 ../src/scen.vhd ../src/disp.vhd ../src/lcd.vhd ../src/board.vhd scen_tb.vhd disp_tb.vhd lcd_tb.vhd board_tb.vhd
+vcom -93 ../src/scen.vhd ../src/disp.vhd ../src/lcd.vhd ../src/vga.vhd ../src/rec.vhd ../src/scope.vhd ../src/text.vhd
+vcom -93 ../src/screen.vhd ../src/board.vhd scen_tb.vhd disp_tb.vhd lcd_tb.vhd vga_tb.vhd rec_tb.vhd scope_tb.vhd
+vcom -93 screen_tb.vhd text_tb.vhd board_tb.vhd
 vcom -93 hrd_tb.vhd tick_tb.vhd nco_tb.vhd plant_slow_tb.vhd plant_slow_edge_tb.vhd plant_fast_tb.vhd plant_fast_edge_tb.vhd
 vcom -93 meas_tb.vhd vctrl_tb.vhd limiter_tb.vhd limiter_edge_tb.vhd cctrl_tb.vhd controller_tb.vhd core_tb.vhd
-foreach t {hrd_tb plant_slow_edge_tb plant_fast_edge_tb limiter_edge_tb scen_tb disp_tb lcd_tb board_tb} {
+foreach t {hrd_tb plant_slow_edge_tb plant_fast_edge_tb limiter_edge_tb scen_tb disp_tb lcd_tb vga_tb rec_tb scope_tb screen_tb text_tb board_tb} {
 	vsim -c $t
 	run -all
 	quit -sim

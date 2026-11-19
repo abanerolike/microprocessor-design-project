@@ -17,6 +17,7 @@ USE work.gfm_pkg.ALL;
 --   page 1 shows shed 0000 and time 0000
 --   limit mode 11 lights LEDG8 and holds the model: KEY1 does nothing
 --   the LCD is powered and write only, and stays idle in its 100 ms power-up wait (1 clock per us here)
+--   VGA: sync on green off and line syncs running (timing and drawing: vga_tb, scope_tb, screen_tb)
 --   the LCD text follows the page and the settings read at reset: power-up, SW17 both ways, the 01011
 --   and 10101 resets (switches already moved) and mode 11, each within 3 ms (bus timing: lcd_tb)
 ENTITY board_tb IS
@@ -33,11 +34,13 @@ ARCHITECTURE a OF board_tb IS
 	SIGNAL ledg : STD_LOGIC_VECTOR(8 DOWNTO 0);
 	SIGNAL ld : STD_LOGIC_VECTOR(7 DOWNTO 0);
 	SIGNAL lrw, len, lrs, lon, lbl : STD_LOGIC;
+	SIGNAL vr, vg, vbl : STD_LOGIC_VECTOR(9 DOWNTO 0);
+	SIGNAL vck, vhs, vvs, vbk, vsy : STD_LOGIC;
 	SIGNAL passes : INTEGER := 0;
 	SIGNAL shown : STRING(1 TO 32);
 BEGIN
 	dut : ENTITY work.board GENERIC MAP (200, 1) PORT MAP (clk, key, sw, h(0), h(1), h(2), h(3), h(4), h(5), h(6), h(7), ledr, ledg, ld,
-		lrw, len, lrs, lon, lbl);
+		lrw, len, lrs, lon, lbl, vr, vg, vbl, vck, vhs, vvs, vbk, vsy);
 
 	PROCESS
 	BEGIN
@@ -163,6 +166,12 @@ BEGIN
 		check(UNSIGNED(ledg(5 DOWNTO 0)) = 0 AND ledg(8 DOWNTO 7) = "00" AND TO_INTEGER(UNSIGNED(ledr)) = 2 ** 11 + 2 ** 7,
 			"power-up LEDs wrong");
 		check(lon = '1' AND lrw = '0' AND len = '0', "LCD not powered, not write only, or written before 100 ms");
+		check(vsy = '0', "VGA sync on green not off");
+		FOR i IN 1 TO 1700 LOOP                              -- a VGA line is 1600 clocks
+			EXIT WHEN vhs = '0';
+			wait_clocks(1);
+		END LOOP;
+		check(vhs = '0', "no VGA line sync");
 		show("6000----", "before the trip");
 		sw(17) <= '1';
 		wait_clocks(1);
