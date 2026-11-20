@@ -9,8 +9,8 @@ ENTITY screen IS
 	GENERIC (nk : INTEGER := 40960);                   -- model steps per column
 	PORT (clk, load, step, lim, en, tr, sh, ta, fb, au, dt : IN STD_LOGIC;
 		lm  : IN INTEGER RANGE 0 TO 3;
-		dd  : IN STD_LOGIC_VECTOR(63 DOWNTO 0);
-		db  : IN STD_LOGIC_VECTOR(0 TO 3);
+		dd  : IN STD_LOGIC_VECTOR(79 DOWNTO 0);
+		db  : IN STD_LOGIC_VECTOR(0 TO 4);
 		lo  : IN SIGNED(31 DOWNTO 0);
 		x, ir, ii, shed, imx : IN SIGNED(31 DOWNTO 0);
 		r, g, b : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);

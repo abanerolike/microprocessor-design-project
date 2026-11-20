@@ -23,7 +23,7 @@ ARCHITECTURE a OF screen_tb IS
 	SIGNAL done : BOOLEAN := FALSE;
 BEGIN
 	dut : ENTITY work.screen GENERIC MAP (1) PORT MAP (clk, load, step, '0', '1', '0', '0', '0', '0', '0', '0', 0,
-		(OTHERS => '0'), "0000", (OTHERS => '0'), x, ir, (OTHERS => '0'), (OTHERS => '0'), TO_SIGNED(322122547, 32),
+		(OTHERS => '0'), "00000", (OTHERS => '0'), x, ir, (OTHERS => '0'), (OTHERS => '0'), TO_SIGNED(322122547, 32),
 		r, g, b, ck, hs, vs, bl);
 
 	PROCESS

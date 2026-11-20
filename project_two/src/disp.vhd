@@ -11,25 +11,32 @@ USE work.gfm_pkg.ALL;
 -- Every 0.1 s of real time (5,000,000 clocks) the inputs are copied at once, on the clock right after a
 -- step edge (all core states and records written at that edge). The shown lowest frequency is the lower
 -- of the copied x and xmin, since xmin takes x one step later. One 32 x 14 multiplier and one
--- shift-add-3 converter serve the four values in turn: 16 clocks each (b = 0 product, 1 load and range
--- check, 2..15 one bit per clock). The digits go to the display together when all four are done, so
+-- shift-add-3 converter serve the five values in turn: 16 clocks each (b = 0 product, 1 load and range
+-- check, 2..15 one bit per clock). The digits go to the display together when all five are done, so
 -- the eight digits always come from the same copy. The same shown copy goes to the VGA text: digits,
 -- flags, trip flag and the lowest x as it was copied (for the 59.2 / 59.7 Hz check).
+-- Fifth value, for the VGA text only: PK, the largest |i1| of the plant state since the trip, in 0.001 pu.
+-- On the clock after each step edge i1 is taken as the 18-bit Q14 operand (rounded, clamped), squared
+-- on the next clock and kept if larger on the one after, with the trip flag of the same step taken
+-- along. Three clocks after a copy the largest square is taken too, so it holds the samples up to the
+-- copied step and no later; its root (Q16, bit by bit in 20 clocks, no multiplier) times 1000, rounded,
+-- is the fifth value. load clears PK, drops the round running and at once shows the values as before the
+-- trip (dashes), until the next copy.
 ENTITY disp IS
-	GENERIC (nr : INTEGER := 5000000);              -- must be longer than one round (64) plus one step
-	PORT (clk, step, pg, tr : IN STD_LOGIC;
-		x, xmin, shed : IN SIGNED(31 DOWNTO 0);
+	GENERIC (nr : INTEGER := 5000000);              -- must be longer than one round (80) plus one step
+	PORT (clk, load, step, pg, tr : IN STD_LOGIC;
+		x, xmin, shed, ir, ii : IN SIGNED(31 DOWNTO 0);  -- ir, ii: i1, Q28
 		t   : IN INTEGER RANGE 0 TO 10000;
 		hex : OUT segs;
-		dd  : OUT STD_LOGIC_VECTOR(63 DOWNTO 0);       -- the shown digits, value v digit i at 16 v + 4 i
-		db  : OUT STD_LOGIC_VECTOR(0 TO 3);           -- the shown out-of-range flags
+		dd  : OUT STD_LOGIC_VECTOR(79 DOWNTO 0);       -- the shown digits, value v digit i at 16 v + 4 i
+		db  : OUT STD_LOGIC_VECTOR(0 TO 4);           -- the shown out-of-range flags
 		dt  : OUT STD_LOGIC;                           -- the shown trip flag
 		lo  : OUT SIGNED(31 DOWNTO 0));                -- lowest x of the shown copy, not rounded
 END disp;
 
 ARCHITECTURE a OF disp IS
 	TYPE nums IS ARRAY (0 TO 3) OF UNSIGNED(3 DOWNTO 0);      -- digit 0 = ones
-	TYPE sets IS ARRAY (0 TO 3) OF nums;                      -- f, lowest f, shed, time
+	TYPE sets IS ARRAY (0 TO 4) OF nums;                      -- f, lowest f, shed, time, PK
 	TYPE pats IS ARRAY (0 TO 3) OF STD_LOGIC_VECTOR(6 DOWNTO 0);
 	CONSTANT DASH : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0111111";
 	CONSTANT ERR : pats := ("1111111", "0101111", "0101111", "0000110");   -- "Err ", digit 0 first
@@ -49,14 +56,21 @@ ARCHITECTURE a OF disp IS
 		END CASE;
 	END seg;
 	SIGNAL dg, hd : sets := (OTHERS => (OTHERS => "0000"));         -- being converted, shown
-	SIGNAL bad, hb : STD_LOGIC_VECTOR(0 TO 3) := (OTHERS => '0');
+	SIGNAL bad, hb : STD_LOGIC_VECTOR(0 TO 4) := (OTHERS => '0');
 	SIGNAL due, sp, cp, htr : STD_LOGIC := '0';
 	SIGNAL hm : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL rc : INTEGER RANGE 0 TO nr - 1 := 0;
 	SIGNAL sx, sxm, ssh : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL st : INTEGER RANGE 0 TO 10000 := 0;
 	SIGNAL str : STD_LOGIC := '0';
-	SIGNAL j : INTEGER RANGE 0 TO 3 := 0;
+	SIGNAL j : INTEGER RANGE 0 TO 4 := 0;
+	SIGNAL pa, pb : SIGNED(17 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL pt, pt2 : STD_LOGIC := '0';
+	SIGNAL sq, pk : UNSIGNED(35 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL w : INTEGER RANGE 0 TO 24 := 0;                    -- clocks since the copy, root steps
+	SIGNAL rad : UNSIGNED(39 DOWNTO 0);
+	SIGNAL rm : UNSIGNED(23 DOWNTO 0);
+	SIGNAL root : UNSIGNED(19 DOWNTO 0);
 	SIGNAL b : INTEGER RANGE 0 TO 15 := 0;
 	SIGNAL m : SIGNED(31 DOWNTO 0);
 	SIGNAL kf : SIGNED(13 DOWNTO 0);
@@ -64,12 +78,14 @@ ARCHITECTURE a OF disp IS
 	SIGNAL v : UNSIGNED(13 DOWNTO 0);
 	SIGNAL bcd : UNSIGNED(15 DOWNTO 0);
 BEGIN
-	m <= sx WHEN j = 0 OR (j = 1 AND sx < sxm) ELSE sxm WHEN j = 1 ELSE ssh;
-	kf <= TO_SIGNED(6000, 14) WHEN j < 2 ELSE TO_SIGNED(8000, 14);
+	m <= sx WHEN j = 0 OR (j = 1 AND sx < sxm) ELSE sxm WHEN j = 1 ELSE SIGNED(RESIZE(root, 32)) WHEN j = 4
+		ELSE ssh;
+	kf <= TO_SIGNED(6000, 14) WHEN j < 2 ELSE TO_SIGNED(1000, 14) WHEN j = 4 ELSE TO_SIGNED(8000, 14);
 
 	PROCESS (clk)
 		VARIABLE q : SIGNED(15 DOWNTO 0);
 		VARIABLE d : UNSIGNED(15 DOWNTO 0);
+		VARIABLE e : UNSIGNED(23 DOWNTO 0);
 	BEGIN
 		IF clk = '1' AND clk'EVENT THEN
 			p <= m * kf;
@@ -90,6 +106,8 @@ BEGIN
 					q := q + 6000;
 				ELSIF j = 3 THEN
 					q := TO_SIGNED(st, 16);
+				ELSIF j = 4 THEN
+					q := RESIZE(rs(p, 16), 16);           -- root Q16 x 1000 -> 0.001 pu, rounded
 				END IF;
 				bad(j) <= '0';
 				IF q < 0 OR q > 9999 THEN
@@ -111,13 +129,42 @@ BEGIN
 					FOR i IN 0 TO 3 LOOP
 						dg(j)(i) <= d(4 * i + 3 DOWNTO 4 * i);
 					END LOOP;
-					IF j = 3 THEN
+					IF j = 4 THEN
 						cp <= '1';
+						j <= 0;
+					ELSE
+						j <= j + 1;
 					END IF;
-					j <= (j + 1) MOD 4;
 				END IF;
 			END IF;
 			b <= (b + 1) MOD 16;
+
+			pa <= op(ir);                            -- PK: sample, square, keep
+			pb <= op(ii);
+			pt <= tr AND sp;
+			sq <= UNSIGNED(RESIZE(pa * pa, 36) + RESIZE(pb * pb, 36));
+			pt2 <= pt;
+			IF pt2 = '1' AND sq > pk THEN
+				pk <= sq;
+			END IF;
+			IF w > 0 AND w < 24 THEN
+				w <= w + 1;
+			END IF;
+			IF w = 3 THEN                            -- the samples up to the copied step are in pk
+				rad <= pk & "0000";
+				rm <= (OTHERS => '0');
+				root <= (OTHERS => '0');
+			ELSIF w > 3 AND w < 24 THEN               -- one root bit per clock (w 4..23)
+				e := rm(21 DOWNTO 0) & rad(39 DOWNTO 38);
+				rad <= rad(37 DOWNTO 0) & "00";
+				IF e >= root & "01" THEN
+					rm <= e - (root & "01");
+					root <= root(18 DOWNTO 0) & '1';
+				ELSE
+					rm <= e;
+					root <= root(18 DOWNTO 0) & '0';
+				END IF;
+			END IF;
 			rc <= (rc + 1) MOD nr;
 			IF rc = 0 THEN
 				due <= '1';
@@ -132,6 +179,17 @@ BEGIN
 				due <= '0';
 				j <= 0;
 				b <= 0;
+				w <= 1;
+			END IF;
+			IF load = '1' THEN                       -- the old peak is never shown after a load
+				htr <= '0';
+				pk <= (OTHERS => '0');
+				pt <= '0';
+				pt2 <= '0';
+				str <= '0';
+				cp <= '0';
+				j <= 0;
+				b <= 0;
 			END IF;
 		END IF;
 	END PROCESS;
@@ -140,6 +198,7 @@ BEGIN
 	dt <= htr;
 	lo <= hm;
 	g : FOR i IN 0 TO 3 GENERATE
+		dd(4 * i + 67 DOWNTO 4 * i + 64) <= STD_LOGIC_VECTOR(hd(4)(i));
 		dd(4 * i + 3 DOWNTO 4 * i) <= STD_LOGIC_VECTOR(hd(0)(i));
 		dd(4 * i + 19 DOWNTO 4 * i + 16) <= STD_LOGIC_VECTOR(hd(1)(i));
 		dd(4 * i + 35 DOWNTO 4 * i + 32) <= STD_LOGIC_VECTOR(hd(2)(i));

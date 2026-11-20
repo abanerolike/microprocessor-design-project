@@ -70,8 +70,8 @@ ARCHITECTURE a OF text_tb IS
 	TYPE shot IS ARRAY (0 TO 639, 0 TO 479) OF INTEGER RANGE 0 TO 15;
 	SIGNAL clk, ta, fb, sh, au, tr, dt : STD_LOGIC := '0';
 	SIGNAL lm : INTEGER RANGE 0 TO 3 := 0;
-	SIGNAL dd : STD_LOGIC_VECTOR(63 DOWNTO 0) := (OTHERS => '0');
-	SIGNAL db : STD_LOGIC_VECTOR(0 TO 3) := "0000";
+	SIGNAL dd : STD_LOGIC_VECTOR(79 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL db : STD_LOGIC_VECTOR(0 TO 4) := "00000";
 	SIGNAL lo : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL r, g, b : STD_LOGIC_VECTOR(9 DOWNTO 0);
 	SIGNAL ck, hs, vs, bl : STD_LOGIC;
@@ -201,7 +201,7 @@ BEGIN
 	BEGIN
 		-- frame 1: trip B, SAT, 1.2 pu, automatic, before the trip
 		au <= '1';
-		dd <= hex4(0) & hex4(0) & hex4(5871) & hex4(6000);
+		dd <= hex4(1268) & hex4(0) & hex4(0) & hex4(5871) & hex4(6000);
 		grab;
 		grab;
 		see(0, 0, "B3.3GW SAT 1.2pu            READY AUTO1s");
@@ -213,7 +213,7 @@ BEGIN
 		see(14, 1, "60.0");
 		see(19, 1, "59.0");
 		see(23, 1, "58.0");
-		see(28, 0, "I1(pu)  I1  IMAX");
+		see(28, 0, "I1(pu)  I1  IMAX    PK -.---pu");
 		see(30, 2, "2.0");
 		see(37, 2, "1.0");
 		see(45, 2, "0.0");
@@ -236,7 +236,7 @@ BEGIN
 		au <= '0';
 		tr <= '1';
 		dt <= '1';
-		dd <= hex4(2000) & hex4(960) & hex4(5871) & hex4(5992);
+		dd <= hex4(1268) & hex4(2000) & hex4(960) & hex4(5871) & hex4(5992);
 		lo <= TO_SIGNED(-10737418, 32);
 		grab;
 		grab;
@@ -245,22 +245,25 @@ BEGIN
 		see(6, 0, "SHED 09.60GW        T 20.00s");
 		see(8, 10, "REF59.7");
 		check(has(33, 4, 2) AND has(34, 4, 2), "OK not green");
+		see(28, 20, "PK 1.268pu");
+		check(has(23, 28, 2) AND NOT has(23, 28, 1), "PK not green");
 
 		-- frame 3: one LSB lower: LOW in red; out-of-range F; reserved mode
 		lo <= TO_SIGNED(-10737419, 32);
-		db <= "1000";
+		db <= "10001";
 		lm <= 3;
 		grab;
 		grab;
 		see(0, 0, "SW2:1=11 INVALID            INVALID     ");
 		see(4, 0, "F  ERR Hz           MIN 58.71Hz LOW  ");
+		see(28, 20, "PK  ERR pu");
 		check(has(32, 4, 3) AND has(34, 4, 3) AND NOT has(26, 4, 3), "LOW not red, or red elsewhere");
 
 		-- frame 4, 5: trip B edge 59.2 Hz, NOLIM, SAT, 1.2 pu SPEC before the switch
 		ta <= '0';
 		fb <= '0';
 		lm <= 2;
-		db <= "0000";
+		db <= "00000";
 		lo <= TO_SIGNED(-28633115, 32);
 		grab;
 		grab;
@@ -276,12 +279,12 @@ BEGIN
 		see(0, 11, "SPEC 1.2pu");
 
 		-- inputs changed right after vertical blank: the frame shows the old ones
-		dd <= hex4(1111) & hex4(2222) & hex4(3333) & hex4(4444);
+		dd <= hex4(9999) & hex4(1111) & hex4(2222) & hex4(3333) & hex4(4444);
 		grab;
 		grab;
 		WAIT UNTIL vs = '0';
 		WAIT UNTIL vs = '1';                                  -- vb is behind, the frame not started
-		dd <= hex4(5555) & hex4(6666) & hex4(7777) & hex4(8888);
+		dd <= hex4(1234) & hex4(5555) & hex4(6666) & hex4(7777) & hex4(8888);
 		lo <= (OTHERS => '0');
 		ln := -1;
 		WHILE ln < 479 OR bl = '1' LOOP
@@ -297,9 +300,10 @@ BEGIN
 			pbl := bl;
 		END LOOP;
 		see(4, 0, "F 44.44Hz           MIN 33.33Hz LOW  ");
+		see(28, 20, "PK 9.999pu");
 
 		ASSERT errs = 0 REPORT "text: FAIL, " & INTEGER'IMAGE(errs) & " errors" SEVERITY FAILURE;
-		REPORT "text: PASS, fixed text, five settings, values, MIN OK/LOW edges, colours, frame copy";
+		REPORT "text: PASS, fixed text, five settings, values, MIN OK/LOW edges, PK, colours, frame copy";
 		done <= TRUE;
 		WAIT;
 	END PROCESS;

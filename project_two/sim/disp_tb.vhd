@@ -17,25 +17,36 @@ USE work.gfm_pkg.ALL;
 --   copy always lands on the clock a round ends
 --   refresh: with a 1000-clock period and x changing every 10 clocks for 3000 clocks, HEX7..4 change at
 --   most 4 times (without the copy they would follow every converter round, about 47 times)
+--   PK (fifth value, VGA only; expected values from the same integer rule in Python): a large i1 before
+--   the trip is left out (3.0 pu, then 1.0) and a peak on the first trip step is kept (1.5 pu for one
+--   step -> 1500); clamped operand at the largest i1 -> 8000, 7.9 + j7.9 pu -> ERR; a load while a round
+--   runs never shows the old peak, then 1000; a peak stays after many refreshes (0.9 - j0.8 -> 1204);
+--   the operand is rounded, not cut (1.00052 pu -> 1001, cut 1000);
+--   i1 and t rising every step: the shown PK always belongs to the shown t (no step early or late)
 -- Every case waits a refresh plus two full rounds of the converter before it compares all eight digits.
 ENTITY disp_tb IS
 END disp_tb;
 
 ARCHITECTURE a OF disp_tb IS
-	SIGNAL clk, pg, tr, step : STD_LOGIC := '0';
+	SIGNAL clk, pg, tr, step, load : STD_LOGIC := '0';
+	SIGNAL ir, ii : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL ramp : BOOLEAN := FALSE;
+	SIGNAL tn : INTEGER RANGE 0 TO 10000 := 0;                -- ramp step count
+	SIGNAL ti : INTEGER RANGE 0 TO 10000;
+	SIGNAL ri : SIGNED(31 DOWNTO 0);
 	SIGNAL ph : INTEGER RANGE 0 TO 4 := 0;
 	SIGNAL done : BOOLEAN := FALSE;
 	SIGNAL x, xmin, shed : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL t : INTEGER RANGE 0 TO 10000 := 0;
 	SIGNAL hex, h2 : segs;
 	SIGNAL x2, lo : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
-	SIGNAL dd : STD_LOGIC_VECTOR(63 DOWNTO 0);
-	SIGNAL db : STD_LOGIC_VECTOR(0 TO 3);
+	SIGNAL dd : STD_LOGIC_VECTOR(79 DOWNTO 0);
+	SIGNAL db : STD_LOGIC_VECTOR(0 TO 4);
 	SIGNAL dt : STD_LOGIC;
 BEGIN
-	dut : ENTITY work.disp GENERIC MAP (320) PORT MAP (clk, step, pg, tr, x, xmin, shed, t, hex, dd, db,
-		dt, lo);
-	d2 : ENTITY work.disp GENERIC MAP (1000) PORT MAP (clk, step, '0', '0', x2, x2, x2, 0, h2);
+	dut : ENTITY work.disp GENERIC MAP (320) PORT MAP (clk, load, step, pg, tr, x, xmin, shed, ri, ii, ti, hex, dd,
+		db, dt, lo);
+	d2 : ENTITY work.disp GENERIC MAP (1000) PORT MAP (clk, '0', step, '0', '0', x2, x2, x2, x2, x2, 0, h2);
 
 	PROCESS (clk)
 	BEGIN
@@ -44,6 +55,19 @@ BEGIN
 		END IF;
 	END PROCESS;
 	step <= '1' WHEN ph = 4 ELSE '0';
+
+	PROCESS (clk)                                       -- ramp: t and i1 step with the model steps
+	BEGIN
+		IF clk = '1' AND clk'EVENT THEN
+			IF NOT ramp THEN
+				tn <= 0;
+			ELSIF step = '1' THEN
+				tn <= tn + 1;
+			END IF;
+		END IF;
+	END PROCESS;
+	ti <= tn WHEN ramp ELSE t;
+	ri <= TO_SIGNED(268435456 + 3000000 * tn, 32) WHEN ramp ELSE ir;
 
 	PROCESS
 	BEGIN
@@ -57,7 +81,7 @@ BEGIN
 	END PROCESS;
 
 	PROCESS
-		VARIABLE errs, n : INTEGER := 0;
+		VARIABLE errs, n, sk, a : INTEGER := 0;
 		VARIABLE last, now : STD_LOGIC_VECTOR(27 DOWNTO 0) := (OTHERS => '0');
 
 		FUNCTION pat (c : CHARACTER) RETURN STD_LOGIC_VECTOR IS
@@ -90,9 +114,36 @@ BEGIN
 			RETURN TRUE;
 		END is_on;
 
+		PROCEDURE check (ok : BOOLEAN; m : STRING) IS
+		BEGIN
+			IF NOT ok THEN
+				errs := errs + 1;
+				REPORT m SEVERITY ERROR;
+			END IF;
+		END check;
+
+		PROCEDURE pulse (SIGNAL p : OUT STD_LOGIC) IS
+		BEGIN
+			WAIT UNTIL clk = '1' AND clk'EVENT;
+			p <= '1';
+			WAIT UNTIL clk = '1' AND clk'EVENT;
+			p <= '0';
+		END pulse;
+
+		FUNCTION val (v : STD_LOGIC_VECTOR(15 DOWNTO 0)) RETURN INTEGER IS   -- four BCD digits
+		BEGIN
+			RETURN 1000 * TO_INTEGER(UNSIGNED(v(15 DOWNTO 12))) + 100 * TO_INTEGER(UNSIGNED(v(11 DOWNTO 8)))
+				+ 10 * TO_INTEGER(UNSIGNED(v(7 DOWNTO 4))) + TO_INTEGER(UNSIGNED(v(3 DOWNTO 0)));
+		END val;
+
+		IMPURE FUNCTION pkv RETURN INTEGER IS
+		BEGIN
+			RETURN val(dd(79 DOWNTO 64));
+		END pkv;
+
 		PROCEDURE show (s : STRING) IS               -- s = HEX7 .. HEX0
 		BEGIN
-			FOR i IN 1 TO 420 LOOP
+			FOR i IN 1 TO 500 LOOP                   -- a refresh (320) and two rounds (80)
 				WAIT UNTIL clk = '1' AND clk'EVENT;
 			END LOOP;
 			WAIT FOR 1 ns;
@@ -137,7 +188,7 @@ BEGIN
 		x <= TO_SIGNED(-7730936, 32);                -- below xmin: the lowest shown is x
 		xmin <= TO_SIGNED(-7659352, 32);
 		show("59785978");
-		IF lo /= TO_SIGNED(-7730936, 32) OR dd(31 DOWNTO 0) /= x"59785978" OR dt /= '1' OR db /= "0000" THEN
+		IF lo /= TO_SIGNED(-7730936, 32) OR dd(31 DOWNTO 0) /= x"59785978" OR dt /= '1' OR db /= "00000" THEN
 			errs := errs + 1;                        -- the copy for the VGA text: x itself, not xmin
 			REPORT "exported copy wrong" SEVERITY ERROR;
 		END IF;
@@ -190,8 +241,77 @@ BEGIN
 			errs := errs + 1;
 			REPORT "HEX7..4 changed " & INTEGER'IMAGE(n) & " times in 3 refresh periods" SEVERITY ERROR;
 		END IF;
+
+		pulse(load);                                 -- PK: before the trip 3.0 pu, not counted
+		ir <= TO_SIGNED(805306368, 32);
+		show("2800----");
+		check(dt = '0', "trip flag shown before the trip");
+		WAIT UNTIL clk = '1' AND clk'EVENT AND step = '1';
+		tr <= '1';                                   -- first trip step: 1.5 pu, then 1.0
+		ir <= TO_SIGNED(402653184, 32);
+		WAIT UNTIL clk = '1' AND clk'EVENT AND step = '1';
+		ir <= TO_SIGNED(268435456, 32);
+		show("28000000");
+		check(pkv = 1500 AND db(4) = '0', "PK " & INTEGER'IMAGE(pkv) & ", not 1500 (first trip step)");
+		pulse(load);
+		ir <= TO_SIGNED(2147483647, 32);             -- largest i1: clamped operand, 7.9999 pu
+		show("28000000");
+		check(pkv = 8000 AND db(4) = '0', "PK " & INTEGER'IMAGE(pkv) & ", not 8000 (clamped)");
+		ir <= TO_SIGNED(2120640102, 32);             -- 7.9 + j7.9 = 11.17 pu
+		ii <= TO_SIGNED(2120640102, 32);
+		show("28000000");
+		check(db(4) = '1', "PK above 9.999 not ERR");
+		ir <= TO_SIGNED(268435456, 32);
+		ii <= (OTHERS => '0');
+		FOR i IN 1 TO 100 LOOP                       -- a load while a round runs
+			WAIT UNTIL clk = '1' AND clk'EVENT;
+		END LOOP;
+		pulse(load);
+		FOR i IN 1 TO 500 LOOP
+			WAIT UNTIL clk = '1' AND clk'EVENT;
+			WAIT FOR 1 ns;
+			IF dt = '1' AND (db(4) = '1' OR pkv /= 1000) THEN
+				errs := errs + 1;
+				REPORT "PK from before the load shown" SEVERITY ERROR;
+				EXIT;
+			END IF;
+		END LOOP;
+		check(dt = '1' AND pkv = 1000, "PK " & INTEGER'IMAGE(pkv) & ", not 1000 after the load");
+		ir <= TO_SIGNED(241591910, 32);              -- 0.9 - j0.8 once, then smaller for long
+		ii <= TO_SIGNED(-214748364, 32);
+		show("28000000");
+		ir <= TO_SIGNED(268435456, 32);
+		ii <= (OTHERS => '0');
+		FOR i IN 1 TO 3 LOOP
+			show("28000000");
+		END LOOP;
+		check(pkv = 1204, "PK " & INTEGER'IMAGE(pkv) & ", not kept at 1204");
+		pulse(load);                                 -- operand rounded: 16392.5 / 16384 pu -> 16393 -> 1001
+		ir <= TO_SIGNED(268574720, 32);              -- (truncated: 16392 -> 1000)
+		show("28000000");
+		check(pkv = 1001, "PK " & INTEGER'IMAGE(pkv) & ", not 1001 (rounded operand)");
+		pulse(load);                                 -- i1 and t rise every step
+		ramp <= TRUE;
+		n := 0;
+		FOR i IN 1 TO 2000 LOOP
+			WAIT UNTIL clk = '1' AND clk'EVENT;
+			WAIT FOR 1 ns;
+			IF dt = '1' THEN
+				sk := val(dd(63 DOWNTO 48));             -- shown t: the step of the copy
+				a := (268435456 + 3000000 * sk + 8192) / 16384;
+				IF pkv /= (4000 * a + 32768) / 65536 THEN
+					errs := errs + 1;
+					REPORT "PK " & INTEGER'IMAGE(pkv) & " not from the step of t = " & INTEGER'IMAGE(sk)
+						SEVERITY ERROR;
+					EXIT;
+				END IF;
+				n := n + 1;
+			END IF;
+		END LOOP;
+		ramp <= FALSE;
+		check(n > 1000, "ramp copies not shown");
 		ASSERT errs = 0 REPORT "disp: FAIL, " & INTEGER'IMAGE(errs) & " errors" SEVERITY FAILURE;
-		REPORT "disp: PASS, pages, rounding, out-of-range display, dashes and refresh";
+		REPORT "disp: PASS, pages, rounding, out-of-range display, dashes, refresh and PK";
 		done <= TRUE;
 		WAIT;
 	END PROCESS;

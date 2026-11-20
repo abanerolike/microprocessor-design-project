@@ -46,8 +46,8 @@ ARCHITECTURE a OF board IS
 	SIGNAL armed : STD_LOGIC_VECTOR(0 TO 6);
 	SIGNAL hex : segs;
 	SIGNAL d : words(0 TO 17);
-	SIGNAL dd : STD_LOGIC_VECTOR(63 DOWNTO 0);
-	SIGNAL db : STD_LOGIC_VECTOR(0 TO 3);
+	SIGNAL dd : STD_LOGIC_VECTOR(79 DOWNTO 0);
+	SIGNAL db : STD_LOGIC_VECTOR(0 TO 4);
 	SIGNAL dt : STD_LOGIC;
 	SIGNAL lo : SIGNED(31 DOWNTO 0);
 BEGIN
@@ -56,8 +56,8 @@ BEGIN
 	cr : ENTITY work.core PORT MAP (CLOCK_50, load, 0, dp, cap, pg0, ks, p0, imx, t2, en, ST_D, ST_TH, Z40, Z32, Z32,
 		Z32, Z28, TK0, AR0, OPEN, step, d, OPEN, OPEN, x, OPEN, shed, OPEN, OPEN, armed, OPEN, OPEN, OPEN, OPEN,
 		OPEN, OPEN, OPEN, lim, OPEN, OPEN, OPEN, OPEN, OPEN);
-	ds : ENTITY work.disp GENERIC MAP (nr) PORT MAP (CLOCK_50, step, pg, tr, x, xmin, shed, t, hex, dd, db, dt,
-		lo);
+	ds : ENTITY work.disp GENERIC MAP (nr) PORT MAP (CLOCK_50, load, step, pg, tr, x, xmin, shed, d(0), d(1), t, hex,
+		dd, db, dt, lo);
 	lc : ENTITY work.lcd GENERIC MAP (us) PORT MAP (CLOCK_50, pg, fb, ta, lm, LCD_RS, LCD_EN, LCD_DATA);
 	LCD_RW <= '0';
 	LCD_ON <= '1';

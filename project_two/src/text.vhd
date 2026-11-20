@@ -10,7 +10,8 @@ USE ieee.numeric_std.ALL;
 --   settings and state, F and MIN with OK or LOW, SHED and T. The legend's reference digit (59.2 or
 --   59.7 Hz) follows the trip type. All inputs are taken in vertical blank, so a frame shows one copy.
 --   dd, db, dt, lo come from the HEX display buffer: digits (value v digit i at 16 v + 4 i, values f,
---   lowest f, shed, time), out-of-range flags, the trip flag and the lowest x of the same copy.
+--   lowest f, shed, time, PK), out-of-range flags, the trip flag and the lowest x of the same copy.
+--   PK (largest |i1| since the trip, 0.001 pu) goes on the current legend line, half rows 28..29.
 --   MIN OK: the lowest x (not the rounded digits) is at or above 59.7 Hz for trip A, 59.2 Hz for trip B
 --   (-0.3/60 and -0.8/60 pu in Q31, rounded up). LOW once below.
 --   pipeline (one stage per pixel clock, as in scope): 1 ROM address, 2 character and font address,
@@ -20,8 +21,8 @@ ENTITY text IS
 		hc  : IN INTEGER RANGE 0 TO 799;
 		vc  : IN INTEGER RANGE 0 TO 524;
 		lm  : IN INTEGER RANGE 0 TO 3;
-		dd  : IN STD_LOGIC_VECTOR(63 DOWNTO 0);
-		db  : IN STD_LOGIC_VECTOR(0 TO 3);
+		dd  : IN STD_LOGIC_VECTOR(79 DOWNTO 0);
+		db  : IN STD_LOGIC_VECTOR(0 TO 4);
 		lo  : IN SIGNED(31 DOWNTO 0);
 		ton : OUT STD_LOGIC;
 		tc  : OUT STD_LOGIC_VECTOR(29 DOWNTO 0));
@@ -159,6 +160,7 @@ ARCHITECTURE a OF text IS
 	END num;
 
 	SIGNAL l0, l4, l6 : codes(0 TO 39) := (OTHERS => 0);
+	SIGNAL lp : codes(0 TO 9) := (OTHERS => 0);
 	SIGNAL ok, rf : STD_LOGIC := '0';
 	SIGNAL ad : INTEGER RANGE 0 TO 2399 := 0;
 	SIGNAL tq : INTEGER RANGE 0 TO 1023;
@@ -187,6 +189,7 @@ BEGIN
 		VARIABLE lim : codes(0 TO 9);
 		VARIABLE st : codes(0 TO 11);
 		VARIABLE lw : codes(0 TO 39);
+		VARIABLE pv : codes(0 TO 9);
 	BEGIN
 		IF clk = '1' AND clk'EVENT THEN
 			IF vb = '1' THEN                             -- vertical blank: the text of the next frame
@@ -234,6 +237,16 @@ BEGIN
 				l6 <= cv("SHED ") & num(dd(47 DOWNTO 32), db(2), '1') & cv("GW        T ")
 					& num(dd(63 DOWNTO 48), db(3), dt) & cv("s            ");
 				rf <= ta;
+				pv := cv("PK -.---pu");                    -- d.ddd from four digits in 0.001 pu
+				IF dt = '1' AND db(4) = '1' THEN
+					pv := cv("PK  ERR pu");
+				ELSIF dt = '1' THEN
+					pv(3) := 1 + TO_INTEGER(UNSIGNED(dd(79 DOWNTO 76)));
+					FOR i IN 0 TO 2 LOOP
+						pv(5 + i) := 1 + TO_INTEGER(UNSIGNED(dd(75 - 4 * i DOWNTO 72 - 4 * i)));
+					END LOOP;
+				END IF;
+				lp <= pv;
 			END IF;
 
 			IF pe = '1' THEN
@@ -268,6 +281,11 @@ BEGIN
 					END IF;
 					cl := tq / 128;
 					fa <= k * 8 + (tq / 64 MOD 2) * 4 + r1;
+					IF (h1 = 28 OR h1 = 29) AND c1 >= 20 AND c1 <= 29 THEN
+						k := lp(c1 - 20);
+						cl := 2;
+						fa <= k * 8 + (h1 MOD 2) * 4 + r1;
+					END IF;
 				END IF;
 				k2 <= cl;
 				f2 <= f1;
