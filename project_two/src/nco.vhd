@@ -8,13 +8,15 @@ USE ieee.math_real.ALL;
 -- table and the next 16 bits interpolate between two neighbours. cos reads the same table 256 points on.
 -- Inside a step: sin pair read at c = 0, cos pair at c = 1, so sn is valid from c = 2 and cs from c = 3,
 -- both held to the end of the step. The phase takes inc at the edge that ends c = 49 and wraps.
+-- en = 0 holds the table reads and outputs while c stands still (step must be 0 then too).
 ENTITY nco IS
 	PORT (clk, load, step : IN STD_LOGIC;
 		c   : IN INTEGER RANGE 0 TO 49;
 		th0 : IN UNSIGNED(39 DOWNTO 0);
 		inc : IN SIGNED(25 DOWNTO 0);
 		th  : BUFFER UNSIGNED(39 DOWNTO 0) := (OTHERS => '0');
-		cs, sn : BUFFER SIGNED(17 DOWNTO 0));
+		cs, sn : BUFFER SIGNED(17 DOWNTO 0);
+		en  : IN STD_LOGIC := '1');
 END nco;
 
 ARCHITECTURE a OF nco IS
@@ -42,13 +44,15 @@ BEGIN
 	PROCESS (clk)
 	BEGIN
 		IF clk = '1' AND clk'EVENT THEN
-			r0 <= rom(TO_INTEGER(adr));
-			r1 <= rom(TO_INTEGER(adr + 1));
-			IF c = 1 THEN
-				sn <= v;
-			END IF;
-			IF c = 2 THEN
-				cs <= v;
+			IF en = '1' THEN
+				r0 <= rom(TO_INTEGER(adr));
+				r1 <= rom(TO_INTEGER(adr + 1));
+				IF c = 1 THEN
+					sn <= v;
+				END IF;
+				IF c = 2 THEN
+					cs <= v;
+				END IF;
 			END IF;
 			IF load = '1' THEN
 				th <= th0;

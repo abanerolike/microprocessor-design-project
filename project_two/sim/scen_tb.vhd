@@ -9,7 +9,7 @@ USE work.gfm_pkg.ALL;
 --   the scenario constants in gfm_pkg equal the config files (trip B and trip A), and kt, nc, nw defaults
 --   give k_trip and k_short
 --   power-up (three clocks, until the switch flip-flops hold values) and KEY0 load the core and read
---   SW0..4; after release the settings stay, whatever SW does
+--   SW0..6 (SW5 vdc, SW6 model as well); after release the settings stay, whatever SW does
 --   automatic trip: tr after exactly kt steps, KEY1 ignored; manual: tr at the first step edge after a
 --   KEY1 press, never between step edges; dp follows tr and is the trip A or trip B size
 --   a switch change on the clock KEY0 is released is not read (two flip-flops, like KEY0)
@@ -27,10 +27,10 @@ ARCHITECTURE a OF scen_tb IS
 	CONSTANT kt : INTEGER := 4;
 	CONSTANT nc : INTEGER := 3;
 	CONSTANT nw : INTEGER := 2;
-	SIGNAL clk, step, lim, load, en, page, pg, fb, ta, au, err, tr, sh, seen, blink : STD_LOGIC := '0';
+	SIGNAL clk, step, lim, load, en, page, pg, fb, ta, au, err, tr, sh, seen, blink, vs, md : STD_LOGIC := '0';
 	SIGNAL done : BOOLEAN := FALSE;
 	SIGNAL key : STD_LOGIC_VECTOR(1 DOWNTO 0) := "11";
-	SIGNAL sw : STD_LOGIC_VECTOR(4 DOWNTO 0) := "00000";
+	SIGNAL sw : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0000000";
 	SIGNAL x, xmin, dp, cap, p0, imx : SIGNED(31 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL pg0, ks : SIGNED(17 DOWNTO 0);
 	SIGNAL t2 : SIGNED(37 DOWNTO 0);
@@ -39,7 +39,7 @@ ARCHITECTURE a OF scen_tb IS
 	SIGNAL n : INTEGER := 0;
 BEGIN
 	dut : ENTITY work.scen GENERIC MAP (kt, nc, nw) PORT MAP (clk, step, lim, key, sw, page, x, load, dp, cap, p0, imx,
-		pg0, ks, t2, en, lm, pg, fb, ta, au, err, tr, sh, seen, blink, xmin, t);
+		pg0, ks, t2, en, lm, pg, fb, ta, au, err, tr, sh, seen, blink, xmin, t, vs, md);
 
 	PROCESS
 	BEGIN
@@ -88,9 +88,9 @@ BEGIN
 			WAIT FOR 1 ns;
 		END edges;
 
-		PROCEDURE reset (s : STD_LOGIC_VECTOR(4 DOWNTO 0)) IS
+		PROCEDURE reset (s : STD_LOGIC_VECTOR) IS        -- SW4..0, or SW6..0
 		BEGIN
-			sw <= s;
+			sw <= STD_LOGIC_VECTOR(RESIZE(UNSIGNED(s), 7));
 			key(0) <= '0';
 			FOR i IN 1 TO 6 LOOP
 				WAIT UNTIL clk = '1' AND clk'EVENT;
@@ -101,7 +101,7 @@ BEGIN
 			FOR i IN 1 TO 3 LOOP
 				WAIT UNTIL clk = '1' AND clk'EVENT;
 			END LOOP;
-			sw <= NOT s;                             -- must not change the settings any more
+			sw <= NOT STD_LOGIC_VECTOR(RESIZE(UNSIGNED(s), 7));   -- must not change the settings any more
 			WAIT FOR 1 ns;
 		END reset;
 
@@ -204,18 +204,23 @@ BEGIN
 		check(err = '0' AND load = '0' AND lm = 0, "valid reset does not clear mode 11");
 
 		-- switches pass two flip-flops: a change at the clock KEY0 is released comes too late to be read
-		sw <= "00000";
+		sw <= "0000000";
 		key(0) <= '0';
 		FOR i IN 1 TO 6 LOOP
 			WAIT UNTIL clk = '1' AND clk'EVENT;
 		END LOOP;
 		key(0) <= '1';
-		sw <= "11011";
+		sw <= "1111011";
 		FOR i IN 1 TO 6 LOOP
 			WAIT UNTIL clk = '1' AND clk'EVENT;
 		END LOOP;
 		WAIT FOR 1 ns;
-		check(fb = '0' AND lm = 0 AND ta = '0' AND au = '0', "switches read without their two flip-flops");
+		check(fb = '0' AND lm = 0 AND ta = '0' AND au = '0' AND vs = '0' AND md = '0',
+			"switches read without their two flip-flops");
+		reset("1100000");                            -- SW5 vdc 4.0 pu, SW6 PWM, held after release
+		check(vs = '1' AND md = '1' AND fb = '0', "SW5 or SW6 not read at reset");
+		reset("0100000");
+		check(vs = '1' AND md = '0', "SW6 not read at reset");
 
 		-- KEY1 pressed in each phase of the step
 		FOR ph IN 0 TO 4 LOOP

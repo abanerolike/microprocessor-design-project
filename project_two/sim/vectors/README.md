@@ -46,3 +46,28 @@ Cases without `a` lose 3.3 GW at the trip (trip B); cases with `a` lose 1.4 GW (
 With no limit, sat and fb give the same windows byte for byte (the fb term is always 0); the generator
 stops with an error if they ever differ.
 The trip is at step 1,000,000. Only Imax 1.0 and 1.2 pu are supported; 2 pu or more means no limit.
+
+## PWM vectors (`pwm/`)
+
+Made by `python/make_vectors_5c.py` (`check` compares without writing). The integer model runs with the
+three-phase PWM: 20 ns ticks, 50 per step, 4 kHz carrier, double update, dead time 100 ticks. Every case
+comes with vdc 2.4 pu (`_24_`) and 4.0 pu (`_40_`):
+
+| Case | Windows |
+|---|---|
+| `held_fb`, `held_sat` | start, trip, limit; `held_sat_24` also clip (first 1024 steps with a clipped duty applied) |
+| `spec_fb`, `spec_sat` | imax_step (the step to 1.0 pu at 11 s) |
+| `helda_fb`, `helda_sat` | trip (trip A) |
+| `nolimit_fb`, `nolimit_sat` | trip; sat and fb files are the same byte for byte (checked) |
+
+Line k: k, the 22 state words, the 16 other run-internal words as above, then the 15 PWM words: init
+flag (4 bits), active duty x3 and pending duty x3 (16 bits, ticks 0..6250), gate command x3 (4 bits),
+dead-time count x3 (8 bits), u re and u im (Q28, 34 bits), the mean phase voltage the LCL takes in step k.
+
+`_sig` line k: v1 re, im (34), phi_k (40), the signs used in step k (bit 0 a, 1 b, 2 c: current below
+zero), the high-tick counts a, b, c (8), the pending duty made in step k x3 (16), the new u re, im (34),
+cos and sin of phi_k (Q16, 18).
+
+`pwm_config.txt`: NH, ND, TPS, H3, KN, then v1 of the start state and, for each vdc, VK, U1, U2, the
+start duties and gate commands; last the current signs of the start state. The PWM files sit in their
+own folder so the stage 2d batch run does not pick them up.

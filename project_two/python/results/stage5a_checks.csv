@@ -5,48 +5,82 @@ required,"T0 sat average, late = gfm_discrete delay 1, f min [Hz]",2.91322521661
 required,"T0 sat average, late = gfm_discrete delay 1, max |i1| [pu]",5.218048215738236e-14,1e-09,True
 required,"T0 sat held duty, late (v1 and voltage) = delay 2, f min [Hz]",7.105427357601002e-15,1e-09,True
 required,"T0 sat held duty, late (v1 and voltage) = delay 2, max |i1| [pu]",4.440892098500626e-16,1e-09,True
-required,"T3 sat dead 2 us, F vs R, f min [Hz]",0.00014082416208793802,0.002,True
-required,"T3 sat dead 2 us, F vs R, max phase |i1| [pu]",0.0010377000226180488,0.05,True
-required,"T3 sat dead 2 us, F vs R, ripple rms [rel]",7.998952168875029e-05,0.1,True
-required,"T3 sat dead 2 us, F vs R, mean grid power [rel]",7.48521576032779e-06,0.005,True
-required,"T3 sat dead 2 us, F vs R, start transient over by [s]",0.045,0.05,True
-explore,"T3 sat dead 0 us, F vs R, f min [Hz]",0.0004028787065735173,0.002,True
-explore,"T3 sat dead 0 us, F vs R, max phase |i1| [pu]",0.007860156715737032,0.05,True
-explore,"T3 sat dead 0 us, F vs R, ripple rms [rel]",4.605672745849887e-06,0.1,True
-explore,"T3 sat dead 0 us, F vs R, mean grid power [rel]",6.073032178477433e-06,0.005,True
-explore,"T3 sat dead 0 us, F vs R, start transient over by [s]",0.045,0.05,True
-required,"T4 sat F zth 0 vs 0.01, f min [Hz]",0.00022501299243060657,0.001,True
-required,"T4 sat F zth 0 vs 0.01, max phase |i1| [pu]",0.00162103794796975,0.02,True
-explore,"T4 sat F zth 0 vs 0.001, f min [Hz]",4.0612608174228626e-05,0.001,True
-explore,"T4 sat F zth 0 vs 0.001, max phase |i1| [pu]",0.0031376440321089216,0.02,True
-explore,"T4 sat F zth 0 vs 0.1, f min [Hz]",0.00016506152864792512,0.001,True
-explore,"T4 sat F zth 0 vs 0.1, max phase |i1| [pu]",0.005413898512152793,0.02,True
-explore,"T4 sat R zth 0 vs 0.01, f min [Hz]",0.00010457075537573246,0.001,True
+required,"T3 sat vdc 2.4 dead 2 us, F vs R, f min [Hz]",0.00017193000242343714,0.002,True
+required,"T3 sat vdc 2.4 dead 2 us, F vs R, max phase |i1| [pu]",5.968809509759865e-05,0.05,True
+required,"T3 sat vdc 2.4 dead 2 us, F vs R, ripple rms [rel]",0.00014125056005065417,0.1,True
+required,"T3 sat vdc 2.4 dead 2 us, F vs R, mean grid power [rel]",5.848241824146783e-06,0.005,True
+required,"T3 sat vdc 2.4 dead 2 us, F vs R, start transient over by [s]",0.045,0.05,True
+explore,"T3 sat vdc 2.4 dead 0 us, F vs R, f min [Hz]",0.0002420657688375627,0.002,True
+explore,"T3 sat vdc 2.4 dead 0 us, F vs R, max phase |i1| [pu]",0.00015716585351843726,0.05,True
+explore,"T3 sat vdc 2.4 dead 0 us, F vs R, ripple rms [rel]",2.034801224848337e-06,0.1,True
+explore,"T3 sat vdc 2.4 dead 0 us, F vs R, mean grid power [rel]",3.024894675629497e-06,0.005,True
+explore,"T3 sat vdc 2.4 dead 0 us, F vs R, start transient over by [s]",0.06,0.05,False
+required,"T4 sat vdc 2.4 F zth 0 vs 0.01, f min [Hz]",0.00012612200459471978,0.001,True
+required,"T4 sat vdc 2.4 F zth 0 vs 0.01, max phase |i1| [pu]",7.64212584682955e-05,0.02,True
+explore,"T4 sat vdc 2.4 F zth 0 vs 0.001, f min [Hz]",5.696316073056096e-05,0.001,True
+explore,"T4 sat vdc 2.4 F zth 0 vs 0.001, max phase |i1| [pu]",0.0003163660339942087,0.02,True
+explore,"T4 sat vdc 2.4 F zth 0 vs 0.1, f min [Hz]",0.0002549414520203186,0.001,True
+explore,"T4 sat vdc 2.4 F zth 0 vs 0.1, max phase |i1| [pu]",0.00036305968971750424,0.02,True
+explore,"T4 sat vdc 2.4 R zth 0 vs 0.01, f min [Hz]",0.0002756886885109111,0.001,True
+required,"T3 sat vdc 4.0 dead 2 us, F vs R, f min [Hz]",8.139240061666442e-05,0.002,True
+required,"T3 sat vdc 4.0 dead 2 us, F vs R, max phase |i1| [pu]",0.0015647963349012528,0.05,True
+required,"T3 sat vdc 4.0 dead 2 us, F vs R, ripple rms [rel]",8.570092031101595e-05,0.1,True
+required,"T3 sat vdc 4.0 dead 2 us, F vs R, mean grid power [rel]",8.586082999473277e-06,0.005,True
+required,"T3 sat vdc 4.0 dead 2 us, F vs R, start transient over by [s]",0.045,0.05,True
+explore,"T3 sat vdc 4.0 dead 0 us, F vs R, f min [Hz]",5.489055639174012e-05,0.002,True
+explore,"T3 sat vdc 4.0 dead 0 us, F vs R, max phase |i1| [pu]",0.0027171850293414845,0.05,True
+explore,"T3 sat vdc 4.0 dead 0 us, F vs R, ripple rms [rel]",4.198663438037542e-06,0.1,True
+explore,"T3 sat vdc 4.0 dead 0 us, F vs R, mean grid power [rel]",3.0255694842828973e-06,0.005,True
+explore,"T3 sat vdc 4.0 dead 0 us, F vs R, start transient over by [s]",0.045,0.05,True
+required,"T4 sat vdc 4.0 F zth 0 vs 0.01, f min [Hz]",0.0003099108046598076,0.001,True
+required,"T4 sat vdc 4.0 F zth 0 vs 0.01, max phase |i1| [pu]",0.001339479673991617,0.02,True
+explore,"T4 sat vdc 4.0 F zth 0 vs 0.001, f min [Hz]",0.0001299688332139226,0.001,True
+explore,"T4 sat vdc 4.0 F zth 0 vs 0.001, max phase |i1| [pu]",0.0029109265662761175,0.02,True
+explore,"T4 sat vdc 4.0 F zth 0 vs 0.1, f min [Hz]",0.00015363889374953033,0.001,True
+explore,"T4 sat vdc 4.0 F zth 0 vs 0.1, max phase |i1| [pu]",0.0016198192864858019,0.02,True
+explore,"T4 sat vdc 4.0 R zth 0 vs 0.01, f min [Hz]",5.332191947360343e-05,0.001,True
 required,"T0 fb average = gfm_discrete, f min [Hz]",0.0,1e-09,True
 required,"T0 fb average = gfm_discrete, max |i1| [pu]",0.0,1e-09,True
 required,"T0 fb average, late = gfm_discrete delay 1, f min [Hz]",1.2079226507921703e-13,1e-09,True
 required,"T0 fb average, late = gfm_discrete delay 1, max |i1| [pu]",0.0,1e-09,True
 required,"T0 fb held duty, late (v1 and voltage) = delay 2, f min [Hz]",7.105427357601002e-15,1e-09,True
 required,"T0 fb held duty, late (v1 and voltage) = delay 2, max |i1| [pu]",3.1086244689504383e-15,1e-09,True
-required,"T3 fb dead 2 us, F vs R, f min [Hz]",5.553201712871214e-05,0.002,True
-required,"T3 fb dead 2 us, F vs R, max phase |i1| [pu]",0.0006068805394967569,0.05,True
-required,"T3 fb dead 2 us, F vs R, ripple rms [rel]",8.044615582347703e-05,0.1,True
-required,"T3 fb dead 2 us, F vs R, mean grid power [rel]",7.20044065283254e-06,0.005,True
-required,"T3 fb dead 2 us, F vs R, start transient over by [s]",0.045,0.05,True
-explore,"T3 fb dead 0 us, F vs R, f min [Hz]",2.8493032374399263e-05,0.002,True
-explore,"T3 fb dead 0 us, F vs R, max phase |i1| [pu]",0.000688799763115755,0.05,True
-explore,"T3 fb dead 0 us, F vs R, ripple rms [rel]",4.605672745849887e-06,0.1,True
-explore,"T3 fb dead 0 us, F vs R, mean grid power [rel]",6.073032178477433e-06,0.005,True
-explore,"T3 fb dead 0 us, F vs R, start transient over by [s]",0.045,0.05,True
-required,"T4 fb F zth 0 vs 0.01, f min [Hz]",0.00015219850137526691,0.001,True
-required,"T4 fb F zth 0 vs 0.01, max phase |i1| [pu]",0.0006088027175918942,0.02,True
-explore,"T4 fb F zth 0 vs 0.001, f min [Hz]",4.546441783759292e-05,0.001,True
-explore,"T4 fb F zth 0 vs 0.001, max phase |i1| [pu]",5.985827459831228e-05,0.02,True
-explore,"T4 fb F zth 0 vs 0.1, f min [Hz]",0.0014360903954866444,0.001,False
-explore,"T4 fb F zth 0 vs 0.1, max phase |i1| [pu]",0.004904240675401184,0.02,True
-explore,"T4 fb R zth 0 vs 0.01, f min [Hz]",0.00012543670960951658,0.001,True
+required,"T3 fb vdc 2.4 dead 2 us, F vs R, f min [Hz]",3.618517239800667e-05,0.002,True
+required,"T3 fb vdc 2.4 dead 2 us, F vs R, max phase |i1| [pu]",0.00023169270960865518,0.05,True
+required,"T3 fb vdc 2.4 dead 2 us, F vs R, ripple rms [rel]",0.00014125056005065417,0.1,True
+required,"T3 fb vdc 2.4 dead 2 us, F vs R, mean grid power [rel]",5.848241824146783e-06,0.005,True
+required,"T3 fb vdc 2.4 dead 2 us, F vs R, start transient over by [s]",0.045,0.05,True
+explore,"T3 fb vdc 2.4 dead 0 us, F vs R, f min [Hz]",2.8902870212732523e-06,0.002,True
+explore,"T3 fb vdc 2.4 dead 0 us, F vs R, max phase |i1| [pu]",0.00013104046151535265,0.05,True
+explore,"T3 fb vdc 2.4 dead 0 us, F vs R, ripple rms [rel]",2.034801224848337e-06,0.1,True
+explore,"T3 fb vdc 2.4 dead 0 us, F vs R, mean grid power [rel]",3.024894675629497e-06,0.005,True
+explore,"T3 fb vdc 2.4 dead 0 us, F vs R, start transient over by [s]",0.06,0.05,False
+required,"T4 fb vdc 2.4 F zth 0 vs 0.01, f min [Hz]",5.5252359231872106e-05,0.001,True
+required,"T4 fb vdc 2.4 F zth 0 vs 0.01, max phase |i1| [pu]",0.0005736984815629675,0.02,True
+explore,"T4 fb vdc 2.4 F zth 0 vs 0.001, f min [Hz]",1.2848631001816102e-05,0.001,True
+explore,"T4 fb vdc 2.4 F zth 0 vs 0.001, max phase |i1| [pu]",5.3651681924948846e-05,0.02,True
+explore,"T4 fb vdc 2.4 F zth 0 vs 0.1, f min [Hz]",0.0006205803689738332,0.001,True
+explore,"T4 fb vdc 2.4 F zth 0 vs 0.1, max phase |i1| [pu]",0.005036065667910927,0.02,True
+explore,"T4 fb vdc 2.4 R zth 0 vs 0.01, f min [Hz]",2.489802281502307e-05,0.001,True
+required,"T3 fb vdc 4.0 dead 2 us, F vs R, f min [Hz]",7.787442434192826e-05,0.002,True
+required,"T3 fb vdc 4.0 dead 2 us, F vs R, max phase |i1| [pu]",0.00012374452450925055,0.05,True
+required,"T3 fb vdc 4.0 dead 2 us, F vs R, ripple rms [rel]",8.851309510116145e-05,0.1,True
+required,"T3 fb vdc 4.0 dead 2 us, F vs R, mean grid power [rel]",8.020033237854385e-06,0.005,True
+required,"T3 fb vdc 4.0 dead 2 us, F vs R, start transient over by [s]",0.045,0.05,True
+explore,"T3 fb vdc 4.0 dead 0 us, F vs R, f min [Hz]",3.280126149007856e-05,0.002,True
+explore,"T3 fb vdc 4.0 dead 0 us, F vs R, max phase |i1| [pu]",9.175458316734719e-05,0.05,True
+explore,"T3 fb vdc 4.0 dead 0 us, F vs R, ripple rms [rel]",4.198663438037542e-06,0.1,True
+explore,"T3 fb vdc 4.0 dead 0 us, F vs R, mean grid power [rel]",3.0255694842828973e-06,0.005,True
+explore,"T3 fb vdc 4.0 dead 0 us, F vs R, start transient over by [s]",0.045,0.05,True
+required,"T4 fb vdc 4.0 F zth 0 vs 0.01, f min [Hz]",0.00013184415560374418,0.001,True
+required,"T4 fb vdc 4.0 F zth 0 vs 0.01, max phase |i1| [pu]",0.0005934668397773457,0.02,True
+explore,"T4 fb vdc 4.0 F zth 0 vs 0.001, f min [Hz]",2.8877068579902243e-05,0.001,True
+explore,"T4 fb vdc 4.0 F zth 0 vs 0.001, max phase |i1| [pu]",0.0002224915636959146,0.02,True
+explore,"T4 fb vdc 4.0 F zth 0 vs 0.1, f min [Hz]",0.0014156196447032698,0.001,False
+explore,"T4 fb vdc 4.0 F zth 0 vs 0.1, max phase |i1| [pu]",0.004991812667271223,0.02,True
+explore,"T4 fb vdc 4.0 R zth 0 vs 0.01, f min [Hz]",0.00012661445037309704,0.001,True
 required,T1 round trip [rel],6.494454581102571e-14,1e-12,True
 required,T1 power identity [rel],2.1094237467877974e-15,1e-12,True
-required,"T2 sat adopted F, applied 1 us mean phase voltages, dq vs abc exact, phase i1 [pu]",0.0010417862627115637,0.01,True
-required,"T2 sat adopted F, applied 1 us mean phase voltages, dq vs abc exact, vc [pu]",0.0008756183602645802,0.01,True
-required,"T2 sat adopted F, applied 1 us mean phase voltages, dq vs abc exact, mean converter power [rel]",0.00041602512707710143,0.001,True
+required,"T2 sat adopted F vdc 4.0, applied 1 us mean phase voltages, dq vs abc exact, phase i1 [pu]",0.0010634573648380385,0.01,True
+required,"T2 sat adopted F vdc 4.0, applied 1 us mean phase voltages, dq vs abc exact, vc [pu]",0.0008854194410001515,0.01,True
+required,"T2 sat adopted F vdc 4.0, applied 1 us mean phase voltages, dq vs abc exact, mean converter power [rel]",0.0004160258446492104,0.001,True

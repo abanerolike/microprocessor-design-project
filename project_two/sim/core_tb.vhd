@@ -15,9 +15,14 @@ USE work.gfm_pkg.ALL;
 --   and the node values equal the _sig line k: sn, sg, incg from c = 2, cs, cg from 3, pg from 6,
 --   lim from 14, exc from 23, il re from 26 and im from 27, dm from 28, inc from 30, v1 from 33
 --   the run ends with every line read, exactly nsteps steps, the last state right, and no errors
+-- pwm = TRUE: a window of vectors/pwm with the PWM model (md = 1, vdc by vdc40). The PWM starts from the
+--   line's PWM words (a window at step 0 from the board's start values); the _sig line has v1 only of the
+--   nodes above, so the check is every state word at every clock and v1 from c = 33
+-- pre > 0: before the window the loop first runs pre steps with the PWM at the other vdc from the board
+--   start, so a reset must leave nothing of that run behind
 ENTITY core_tb IS
 	GENERIC (fname : STRING := "vectors/held_sat_ufls"; cname : STRING := "vectors/held_sat_config.txt";
-		nsteps : INTEGER := 2048);
+		nsteps : INTEGER := 2048; pwm, vdc40 : BOOLEAN := FALSE; pre : INTEGER := 0);
 END core_tb;
 
 ARCHITECTURE a OF core_tb IS
@@ -41,6 +46,17 @@ ARCHITECTURE a OF core_tb IS
 	SIGNAL inc : SIGNED(25 DOWNTO 0);
 	SIGNAL incg : SIGNED(24 DOWNTO 0);
 	SIGNAL e : sigs := (OTHERS => (OTHERS => '0'));
+	SIGNAL md, vs : STD_LOGIC := '0';
+	SIGNAL wq0 : INTEGER RANGE 0 TO 249 := 0;
+	SIGNAL wth0 : UNSIGNED(39 DOWNTO 0) := ST_KN;            -- the board start, so the PWM never sees 'U'
+	SIGNAL wc0 : SIGNED(17 DOWNTO 0) := TO_SIGNED(65536, 18);
+	SIGNAL ws0 : SIGNED(17 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL wda0, wdp0 : duties := ST_DU('0');
+	SIGNAL wdc0 : deads := (100, 100, 100);
+	SIGNAL wcm0 : STD_LOGIC_VECTOR(0 TO 2) := "111";
+	SIGNAL wng0 : STD_LOGIC_VECTOR(0 TO 2) := ST_NG;
+	SIGNAL wur0 : SIGNED(33 DOWNTO 0) := TO_SIGNED(ST_V1R, 34);
+	SIGNAL wui0 : SIGNED(33 DOWNTO 0) := TO_SIGNED(ST_V1I, 34);
 
 	-- one whole window line: step number, the 18 words, both phases, then the grid part
 	PROCEDURE whole (l : INOUT LINE; k : OUT INTEGER; vd : OUT words; vth, vthg : OUT UNSIGNED;
@@ -80,7 +96,7 @@ ARCHITECTURE a OF core_tb IS
 BEGIN
 	dut : ENTITY work.core PORT MAP (clk, load, k0, dp, cap, pg0, ks, p0, imx, t2, en, d0, th0, thg0, x0, pm0, sh0,
 		ps0, tk0, ar0, c, step, d, th, thg, x, pm, shed, psum, ticks, armed, cs, sn, cg, sg, pg, dm, il, lim, exc,
-		v1r, v1i, inc, incg);
+		v1r, v1i, inc, incg, md, vs, wq0, wth0, wc0, ws0, wda0, wdp0, wdc0, wcm0, wng0, wur0, wui0);
 
 	PROCESS
 	BEGIN
@@ -100,11 +116,12 @@ BEGIN
 		IF run AND (d /= ed OR th /= eth OR thg /= ethg OR x /= ex OR pm /= epm OR psum /= eps
 			OR (c <= 12 AND (shed /= esh OR ticks /= etk OR armed /= ear))
 			OR (c >= 19 AND (shed /= nsh OR ticks /= ntk OR armed /= nar))
-			OR (c >= 2 AND (sn /= e(11) OR sg /= e(13) OR incg /= e(8)))
+			OR (NOT pwm AND ((c >= 2 AND (sn /= e(11) OR sg /= e(13) OR incg /= e(8)))
 			OR (c >= 3 AND (cs /= e(10) OR cg /= e(12))) OR (c >= 6 AND pg /= e(9))
 			OR (c >= 14 AND (lim = '1') /= (e(4) = 1)) OR (c >= 23 AND exc /= e(5))
 			OR (c >= 26 AND il(0) /= e(2)) OR (c >= 27 AND il(1) /= e(3)) OR (c >= 28 AND dm /= e(6))
-			OR (c >= 30 AND inc /= e(7)) OR (c >= 33 AND (v1r /= e(0) OR v1i /= e(1)))) THEN
+			OR (c >= 30 AND inc /= e(7))))
+			OR (c >= 33 AND (v1r /= e(0) OR v1i /= e(1)))) THEN
 			cerr <= cerr + 1;
 			REPORT "state or node wrong at c = " & INTEGER'IMAGE(c) SEVERITY ERROR;
 		END IF;
@@ -125,6 +142,22 @@ BEGIN
 		VARIABLE vtk : counts;
 		VARIABLE var : STD_LOGIC_VECTOR(0 TO 6);
 		VARIABLE mm : SIGNED(47 DOWNTO 0);
+		VARIABLE l2 : LINE;
+		VARIABLE pr : pwords;
+		VARIABLE ps : swords;
+
+		PROCEDURE nodes IS                           -- the _sig line of this step
+		BEGIN
+			readline(fs, l);
+			IF pwm THEN
+				psig(l, ps);
+				v := (OTHERS => (OTHERS => '0'));
+				v(0) := RESIZE(ps.v1r, 36);
+				v(1) := RESIZE(ps.v1i, 36);
+			ELSE
+				sigread(l, v);
+			END IF;
+		END nodes;
 	BEGIN
 		-- config: ks 17 (F 40), method_fb 50, p0 52, trip 53, cap 54, imax0 55, imax_cont 56, k_trip 57,
 		-- k_short 58, pg0 59
@@ -138,9 +171,82 @@ BEGIN
 		cap <= RESIZE(cf(54), 32);
 		pg0 <= RESIZE(cf(59), 18);
 
+		IF pre > 0 THEN                              -- an earlier run with the other vdc
+			md <= '1';
+			vs <= '1';
+			wda0 <= ST_DU('1');
+			wdp0 <= ST_DU('1');
+			IF vdc40 THEN
+				vs <= '0';
+				wda0 <= ST_DU('0');
+				wdp0 <= ST_DU('0');
+			END IF;
+			wq0 <= 0;
+			wth0 <= ST_KN;
+			wdc0 <= (100, 100, 100);
+			wcm0 <= "111";
+			wng0 <= ST_NG;
+			wur0 <= TO_SIGNED(ST_V1R, 34);
+			wui0 <= TO_SIGNED(ST_V1I, 34);
+			wc0 <= TO_SIGNED(65536, 18);
+			ws0 <= (OTHERS => '0');
+			d0 <= ST_D;
+			th0 <= ST_TH;
+			ar0 <= "1111111";
+			p0 <= RESIZE(cf(52), 32);
+			imx <= RESIZE(cf(55), 32);
+			en <= '1';
+			load <= '1';
+			WAIT UNTIL clk = '1' AND clk'EVENT;
+			load <= '0';
+			FOR i IN 1 TO pre * 50 LOOP
+				WAIT UNTIL clk = '1' AND clk'EVENT;
+			END LOOP;
+		END IF;
 		readline(fv, l);
+		l2 := NEW STRING'(l.ALL);
 		whole(l, k, vd, vth, vthg, vx, vpm, vsh, vps, vtk, var);
 		k0 <= k MOD 1024;
+		md <= '0';
+		vs <= '0';
+		IF pwm THEN                                  -- PWM start: as in pwm_tb
+			md <= '1';
+			IF vdc40 THEN
+				vs <= '1';
+			END IF;
+			prow(l2, pr);
+			nodes;
+			wq0 <= k MOD 250;
+			wth0 <= ps.ph + ST_KN;
+			IF pr.flag = 1 THEN
+				wda0 <= ST_DU('0');
+				wdp0 <= ST_DU('0');
+				IF vdc40 THEN
+					wda0 <= ST_DU('1');
+					wdp0 <= ST_DU('1');
+				END IF;
+				wdc0 <= (100, 100, 100);
+				wcm0 <= "111";
+				wng0 <= ST_NG;
+				wur0 <= TO_SIGNED(ST_V1R, 34);
+				wui0 <= TO_SIGNED(ST_V1I, 34);
+				wc0 <= TO_SIGNED(65536, 18);
+				ws0 <= (OTHERS => '0');
+			ELSE
+				wda0 <= pr.da;
+				IF k MOD 125 = 0 THEN
+					wda0 <= pr.dp;
+				END IF;
+				wdp0 <= pr.dp;
+				wdc0 <= pr.dc;
+				wcm0 <= pr.cm;
+				wng0 <= ps.ng;
+				wur0 <= pr.ur;
+				wui0 <= pr.ui;
+				wc0 <= ps.ck;
+				ws0 <= ps.sk;
+			END IF;
+		END IF;
 		d0 <= vd;
 		th0 <= vth;
 		thg0 <= vthg;
@@ -181,8 +287,9 @@ BEGIN
 			thr := m - SHIFT_RIGHT(m, 11);
 			imx <= m;
 			t2 <= RESIZE(SHIFT_RIGHT(thr * thr, 28), 38);
-			readline(fs, l);
-			sigread(l, v);
+			IF NOT pwm OR steps > 0 THEN              -- the PWM start has read the first _sig line
+				nodes;
+			END IF;
 			e <= v;
 			readline(fv, l);
 			whole(l, kn, vd, vth, vthg, vx, vpm, vsh, vps, vtk, var);

@@ -1,0 +1,177 @@
+kind,check,error,limit,pass
+required,"held_sat vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"held_sat vdc 2.4, f min [Hz]",0.0003497394577891555,0.01,True
+required,"held_sat vdc 2.4, max |i1| [pu]",8.007155703193547e-05,0.01,True
+required,"held_sat vdc 2.4, integer saturations",0.0,0.0,True
+record,"held_sat vdc 2.4, pole slips float / integer",8 / 8,,
+record,"held_sat vdc 2.4, clipped time float / integer [s]",1.0889 / 1.0888,,
+record,"held_sat vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0197, +0.4517, +0.00",,
+required,"held_sat vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"held_sat vdc 4.0, f min [Hz]",0.0002740087532870916,0.01,True
+required,"held_sat vdc 4.0, max |i1| [pu]",0.00036155085062694603,0.01,True
+required,"held_sat vdc 4.0, integer saturations",0.0,0.0,True
+record,"held_sat vdc 4.0, pole slips float / integer",8 / 8,,
+record,"held_sat vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"held_sat vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0086, +0.3387, +0.00",,
+required,"held_fb vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"held_fb vdc 2.4, f min [Hz]",3.199028810740856e-07,0.01,True
+required,"held_fb vdc 2.4, max |i1| [pu]",0.00016957602031597574,0.01,True
+required,"held_fb vdc 2.4, integer saturations",0.0,0.0,True
+record,"held_fb vdc 2.4, pole slips float / integer",0 / 0,,
+record,"held_fb vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"held_fb vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0016, +0.2893, +0.00",,
+required,"held_fb vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"held_fb vdc 4.0, f min [Hz]",1.66230331686279e-05,0.01,True
+required,"held_fb vdc 4.0, max |i1| [pu]",1.1522145003661777e-05,0.01,True
+required,"held_fb vdc 4.0, integer saturations",0.0,0.0,True
+record,"held_fb vdc 4.0, pole slips float / integer",0 / 0,,
+record,"held_fb vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"held_fb vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0036, +0.3668, +0.00",,
+required,"spec_sat vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"spec_sat vdc 2.4, f min [Hz]",0.0003497394577891555,0.01,True
+required,"spec_sat vdc 2.4, max |i1| [pu]",8.007155703193547e-05,0.01,True
+required,"spec_sat vdc 2.4, integer saturations",0.0,0.0,True
+record,"spec_sat vdc 2.4, pole slips float / integer",8 / 8,,
+record,"spec_sat vdc 2.4, clipped time float / integer [s]",1.0889 / 1.0888,,
+record,"spec_sat vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0197, +0.4517, +0.00",,
+required,"spec_sat vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"spec_sat vdc 4.0, f min [Hz]",0.0002740087532870916,0.01,True
+required,"spec_sat vdc 4.0, max |i1| [pu]",0.00036155085062694603,0.01,True
+required,"spec_sat vdc 4.0, integer saturations",0.0,0.0,True
+record,"spec_sat vdc 4.0, pole slips float / integer",8 / 8,,
+record,"spec_sat vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"spec_sat vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0086, +0.3387, +0.00",,
+required,"spec_fb vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"spec_fb vdc 2.4, f min [Hz]",0.00024662374527650854,0.01,True
+required,"spec_fb vdc 2.4, max |i1| [pu]",0.00016957602031597574,0.01,True
+required,"spec_fb vdc 2.4, integer saturations",0.0,0.0,True
+record,"spec_fb vdc 2.4, pole slips float / integer",0 / 0,,
+record,"spec_fb vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"spec_fb vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","+0.0001, +0.2893, +0.00",,
+required,"spec_fb vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"spec_fb vdc 4.0, f min [Hz]",0.00027075174035218197,0.01,True
+required,"spec_fb vdc 4.0, max |i1| [pu]",1.1522145003661777e-05,0.01,True
+required,"spec_fb vdc 4.0, integer saturations",0.0,0.0,True
+record,"spec_fb vdc 4.0, pole slips float / integer",0 / 0,,
+record,"spec_fb vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"spec_fb vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0001, +0.3668, +0.00",,
+required,"nolimit_sat vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"nolimit_sat vdc 2.4, f min [Hz]",2.3786445943585477e-05,0.01,True
+required,"nolimit_sat vdc 2.4, max |i1| [pu]",0.00021552143384995226,0.01,True
+required,"nolimit_sat vdc 2.4, integer saturations",0.0,0.0,True
+record,"nolimit_sat vdc 2.4, pole slips float / integer",0 / 0,,
+record,"nolimit_sat vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimit_sat vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.2894, +0.00",,
+required,"nolimit_sat vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"nolimit_sat vdc 4.0, f min [Hz]",2.3076396239218866e-05,0.01,True
+required,"nolimit_sat vdc 4.0, max |i1| [pu]",1.00997027216998e-05,0.01,True
+required,"nolimit_sat vdc 4.0, integer saturations",0.0,0.0,True
+record,"nolimit_sat vdc 4.0, pole slips float / integer",0 / 0,,
+record,"nolimit_sat vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimit_sat vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.3692, +0.00",,
+required,"nolimit_fb vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"nolimit_fb vdc 2.4, f min [Hz]",2.3786445943585477e-05,0.01,True
+required,"nolimit_fb vdc 2.4, max |i1| [pu]",0.00021552143384995226,0.01,True
+required,"nolimit_fb vdc 2.4, integer saturations",0.0,0.0,True
+record,"nolimit_fb vdc 2.4, pole slips float / integer",0 / 0,,
+record,"nolimit_fb vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimit_fb vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.2894, +0.00",,
+required,"nolimit_fb vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"nolimit_fb vdc 4.0, f min [Hz]",2.3076396239218866e-05,0.01,True
+required,"nolimit_fb vdc 4.0, max |i1| [pu]",1.00997027216998e-05,0.01,True
+required,"nolimit_fb vdc 4.0, integer saturations",0.0,0.0,True
+record,"nolimit_fb vdc 4.0, pole slips float / integer",0 / 0,,
+record,"nolimit_fb vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimit_fb vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.3692, +0.00",,
+required,"helda_sat vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"helda_sat vdc 2.4, f min [Hz]",1.968820847508823e-05,0.01,True
+required,"helda_sat vdc 2.4, max |i1| [pu]",0.0009318412226060335,0.01,True
+required,"helda_sat vdc 2.4, integer saturations",0.0,0.0,True
+record,"helda_sat vdc 2.4, pole slips float / integer",0 / 0,,
+record,"helda_sat vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"helda_sat vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.2996, +0.00",,
+required,"helda_sat vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"helda_sat vdc 4.0, f min [Hz]",2.7195385854383858e-05,0.01,True
+required,"helda_sat vdc 4.0, max |i1| [pu]",0.0007040230947574777,0.01,True
+required,"helda_sat vdc 4.0, integer saturations",0.0,0.0,True
+record,"helda_sat vdc 4.0, pole slips float / integer",0 / 0,,
+record,"helda_sat vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"helda_sat vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.3829, +0.00",,
+required,"helda_fb vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"helda_fb vdc 2.4, f min [Hz]",1.968820847508823e-05,0.01,True
+required,"helda_fb vdc 2.4, max |i1| [pu]",0.0009318412226060335,0.01,True
+required,"helda_fb vdc 2.4, integer saturations",0.0,0.0,True
+record,"helda_fb vdc 2.4, pole slips float / integer",0 / 0,,
+record,"helda_fb vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"helda_fb vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.2996, +0.00",,
+required,"helda_fb vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"helda_fb vdc 4.0, f min [Hz]",1.351748080935522e-05,0.01,True
+required,"helda_fb vdc 4.0, max |i1| [pu]",1.5727198234616324e-05,0.01,True
+required,"helda_fb vdc 4.0, integer saturations",0.0,0.0,True
+record,"helda_fb vdc 4.0, pole slips float / integer",0 / 0,,
+record,"helda_fb vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"helda_fb vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.3842, +0.00",,
+required,"speca_sat vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"speca_sat vdc 2.4, f min [Hz]",0.0003271321017308537,0.01,True
+required,"speca_sat vdc 2.4, max |i1| [pu]",0.0002743917938134999,0.01,True
+required,"speca_sat vdc 2.4, integer saturations",0.0,0.0,True
+record,"speca_sat vdc 2.4, pole slips float / integer",15 / 15,,
+record,"speca_sat vdc 2.4, clipped time float / integer [s]",1.7241 / 1.7220,,
+record,"speca_sat vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0076, +0.4171, +0.00",,
+required,"speca_sat vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"speca_sat vdc 4.0, f min [Hz]",0.0003806651851618881,0.01,True
+required,"speca_sat vdc 4.0, max |i1| [pu]",0.0007040230947574777,0.01,True
+required,"speca_sat vdc 4.0, integer saturations",0.0,0.0,True
+record,"speca_sat vdc 4.0, pole slips float / integer",15 / 15,,
+record,"speca_sat vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"speca_sat vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0040, +0.3521, +0.00",,
+required,"speca_fb vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"speca_fb vdc 2.4, f min [Hz]",1.968820847508823e-05,0.01,True
+required,"speca_fb vdc 2.4, max |i1| [pu]",0.0009318412226060335,0.01,True
+required,"speca_fb vdc 2.4, integer saturations",0.0,0.0,True
+record,"speca_fb vdc 2.4, pole slips float / integer",0 / 0,,
+record,"speca_fb vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"speca_fb vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.2996, +0.00",,
+required,"speca_fb vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"speca_fb vdc 4.0, f min [Hz]",1.351748080935522e-05,0.01,True
+required,"speca_fb vdc 4.0, max |i1| [pu]",1.5727198234616324e-05,0.01,True
+required,"speca_fb vdc 4.0, integer saturations",0.0,0.0,True
+record,"speca_fb vdc 4.0, pole slips float / integer",0 / 0,,
+record,"speca_fb vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"speca_fb vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.3842, +0.00",,
+required,"nolimita_sat vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"nolimita_sat vdc 2.4, f min [Hz]",1.968820856035336e-05,0.01,True
+required,"nolimita_sat vdc 2.4, max |i1| [pu]",0.0009318412217118599,0.01,True
+required,"nolimita_sat vdc 2.4, integer saturations",0.0,0.0,True
+record,"nolimita_sat vdc 2.4, pole slips float / integer",0 / 0,,
+record,"nolimita_sat vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimita_sat vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.2996, +0.00",,
+required,"nolimita_sat vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"nolimita_sat vdc 4.0, f min [Hz]",2.8450603238638905e-05,0.01,True
+required,"nolimita_sat vdc 4.0, max |i1| [pu]",0.00034025879239552026,0.01,True
+required,"nolimita_sat vdc 4.0, integer saturations",0.0,0.0,True
+record,"nolimita_sat vdc 4.0, pole slips float / integer",0 / 0,,
+record,"nolimita_sat vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimita_sat vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.3832, +0.00",,
+required,"nolimita_fb vdc 2.4, UFLS shed [GW]",0.0,0.0,True
+required,"nolimita_fb vdc 2.4, f min [Hz]",1.968820856035336e-05,0.01,True
+required,"nolimita_fb vdc 2.4, max |i1| [pu]",0.0009318412217118599,0.01,True
+required,"nolimita_fb vdc 2.4, integer saturations",0.0,0.0,True
+record,"nolimita_fb vdc 2.4, pole slips float / integer",0 / 0,,
+record,"nolimita_fb vdc 2.4, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimita_fb vdc 2.4, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.2996, +0.00",,
+required,"nolimita_fb vdc 4.0, UFLS shed [GW]",0.0,0.0,True
+required,"nolimita_fb vdc 4.0, f min [Hz]",2.8450603238638905e-05,0.01,True
+required,"nolimita_fb vdc 4.0, max |i1| [pu]",0.00034025879239552026,0.01,True
+required,"nolimita_fb vdc 4.0, integer saturations",0.0,0.0,True
+record,"nolimita_fb vdc 4.0, pole slips float / integer",0 / 0,,
+record,"nolimita_fb vdc 4.0, clipped time float / integer [s]",0.0000 / 0.0000,,
+record,"nolimita_fb vdc 4.0, integer PWM - average: f min [Hz], max |i1| [pu], shed [GW]","-0.0000, +0.3832, +0.00",,
+required,nolimit vdc 2.4 float: sat = fb (largest difference),0.0,0.0,True
+required,nolimit vdc 2.4 integer: sat = fb (largest difference),0.0,0.0,True
+required,nolimit vdc 4.0 float: sat = fb (largest difference),0.0,0.0,True
+required,nolimit vdc 4.0 integer: sat = fb (largest difference),0.0,0.0,True
+required,nolimita vdc 2.4 float: sat = fb (largest difference),0.0,0.0,True
+required,nolimita vdc 2.4 integer: sat = fb (largest difference),0.0,0.0,True
+required,nolimita vdc 4.0 float: sat = fb (largest difference),0.0,0.0,True
+required,nolimita vdc 4.0 integer: sat = fb (largest difference),0.0,0.0,True

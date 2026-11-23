@@ -2,10 +2,11 @@
 and results/stage5a_checks.csv (each check, its error, the limit fixed before the runs, pass or fail).
 Usage: python verify_stage5a.py  (about an hour on two cores)
 
-Settings: vdc in pu of the phase peak (4.0 analysis, 2.4 design), dead time and ticks in physical time,
+Settings: vdc in pu of the phase peak (2.4 design and board default, 4.0 analysis), dead time and ticks in physical time,
 F = plant 1 us, PWM ticks 20 ns (pw 50); R = plant 0.1 us, PWM ticks 20 ns (sub 10, pw 5);
 late = the hardware order (the duty register loads last step's v1, the plant gets last step's mean voltage).
-Adopted configuration: F, late, double update, dead time 2 us. The required checks are run on it; the
+Adopted configuration: F, late, double update, dead time 2 us, vdc 2.4 (4.0 selectable). The required checks
+are run on it at both vdc values (T0 and T2 at 4.0, where no duty clips); the
 "explore" checks (other dead times, update methods, thresholds) are recorded but do not set the exit code.
 Exit code 1 when a required check fails: compare the names of failed checks, not only their number.
 """
@@ -47,7 +48,7 @@ def job(a):
         "start transient over by [s]": (bad[-1] + 1) * 5e-3 if len(bad) else 0.0}
 
 
-def key(case, mode=1, sub=1, pw=50, td=2e-6, vdc=4.0, zth=0.0, upd=2, late=True, t_pre=1.0):
+def key(case, mode=1, sub=1, pw=50, td=2e-6, vdc=2.4, zth=0.0, upd=2, late=True, t_pre=1.0):
     return (case, mode, sub, pw, td, vdc, zth, upd, late, t_pre)
 
 
@@ -81,18 +82,19 @@ def t2():
 if __name__ == "__main__":
     runs = []
     for c in CASES:
-        runs += [key(c, mode=0, pw=1, td=0.0, upd=0, late=False), key(c, mode=0, pw=1, td=0.0, upd=0),
-                 key(c, mode=2, pw=1, td=0.0, upd=0)]                                         # T0
-        for td in (0.0, 2e-6):
-            runs += [key(c, td=td), key(c, td=td, sub=10, pw=5)]                               # T3
-        for z in (0.001, 0.01, 0.1):
-            runs += [key(c, zth=z)]                                                            # T4
-        runs += [key(c, sub=10, pw=5, zth=0.01)]
+        runs += [key(c, mode=0, pw=1, td=0.0, upd=0, late=False, vdc=4.0), key(c, mode=0, pw=1, td=0.0, upd=0, vdc=4.0),
+                 key(c, mode=2, pw=1, td=0.0, upd=0, vdc=4.0)]                                # T0
+        for v in (2.4, 4.0):
+            for td in (0.0, 2e-6):
+                runs += [key(c, td=td, vdc=v), key(c, td=td, sub=10, pw=5, vdc=v)]            # T3
+            for z in (0.001, 0.01, 0.1):
+                runs += [key(c, zth=z, vdc=v)]                                                # T4
+            runs += [key(c, sub=10, pw=5, zth=0.01, vdc=v)]
         for u in (0, 1, 2):
-            runs += [key(c, upd=u), key(c, mode=2, pw=1, td=0.0, upd=u), key(c, upd=u, vdc=2.4)]   # 5b
+            runs += [key(c, upd=u), key(c, mode=2, pw=1, td=0.0, upd=u, vdc=4.0), key(c, upd=u, vdc=4.0)]   # 5b
     runs = list(dict.fromkeys(runs))
     with Pool(2) as pool:
-        res = pool.map(job, runs + [key("sat", t_pre=2.0)])
+        res = pool.map(job, runs + [key("sat", t_pre=2.0, vdc=4.0)])
     T = pd.DataFrame(res[:-1])
     T.to_csv(OUT / "stage5a_runs.csv", index=False)
     R = {r: dict(zip(T.columns, row)) for r, row in zip(runs, T.itertuples(index=False))}
@@ -104,34 +106,36 @@ if __name__ == "__main__":
 
     for c in CASES:
         ref = [q.simulate(nslow=1024, delay=d, **CASES[c])[1] for d in (0, 1, 2)]
-        for r, d, n in [(key(c, mode=0, pw=1, td=0.0, upd=0, late=False), 0, "average = gfm_discrete"),
-                        (key(c, mode=0, pw=1, td=0.0, upd=0), 1, "average, late = gfm_discrete delay 1"),
-                        (key(c, mode=2, pw=1, td=0.0, upd=0), 2, "held duty, late (v1 and voltage) = delay 2")]:
+        for r, d, n in [(key(c, mode=0, pw=1, td=0.0, upd=0, late=False, vdc=4.0), 0, "average = gfm_discrete"),
+                        (key(c, mode=0, pw=1, td=0.0, upd=0, vdc=4.0), 1, "average, late = gfm_discrete delay 1"),
+                        (key(c, mode=2, pw=1, td=0.0, upd=0, vdc=4.0), 2, "held duty, late (v1 and voltage) = delay 2")]:
             chk("required", f"T0 {c} {n}, f min [Hz]", abs(R[r]["f min [Hz]"] - ref[d]["f min [Hz]"]), 1e-9)
             chk("required", f"T0 {c} {n}, max |i1| [pu]", abs(R[r]["max |i1| [pu]"] - ref[d]["max |i1| [pu]"]), 1e-9)
-        for td in (2e-6, 0.0):
-            kind = "required" if td else "explore"
-            f, r = R[key(c, td=td)], R[key(c, td=td, sub=10, pw=5)]
-            n = f"T3 {c} dead {td * 1e6:.0f} us, F vs R"
-            chk(kind, n + ", f min [Hz]", abs(f["f min [Hz]"] - r["f min [Hz]"]), 2e-3)
-            chk(kind, n + ", max phase |i1| [pu]", abs(f["max phase |i1| [pu]"] - r["max phase |i1| [pu]"]), 0.05)
-            chk(kind, n + ", ripple rms [rel]", abs(f["ripple rms 0.5-1 s [pu]"] / r["ripple rms 0.5-1 s [pu]"] - 1), 0.10)
-            chk(kind, n + ", mean grid power [rel]",
-                abs(f["mean grid power 0.5-1 s [pu]"] / r["mean grid power 0.5-1 s [pu]"] - 1), 0.005)
-            chk(kind, n + ", start transient over by [s]", f["start transient over by [s]"], 0.05)
-        for z in (0.01, 0.001, 0.1):
-            kind = "required" if z == 0.01 else "explore"
-            f, g = R[key(c)], R[key(c, zth=z)]
-            chk(kind, f"T4 {c} F zth 0 vs {z}, f min [Hz]", abs(f["f min [Hz]"] - g["f min [Hz]"]), 1e-3)
-            chk(kind, f"T4 {c} F zth 0 vs {z}, max phase |i1| [pu]",
-                abs(f["max phase |i1| [pu]"] - g["max phase |i1| [pu]"]), 0.02)
-        f, g = R[key(c, sub=10, pw=5)], R[key(c, sub=10, pw=5, zth=0.01)]
-        chk("explore", f"T4 {c} R zth 0 vs 0.01, f min [Hz]", abs(f["f min [Hz]"] - g["f min [Hz]"]), 1e-3)
+        for v in (2.4, 4.0):
+            for td in (2e-6, 0.0):
+                kind = "required" if td else "explore"
+                f, r = R[key(c, td=td, vdc=v)], R[key(c, td=td, sub=10, pw=5, vdc=v)]
+                n = f"T3 {c} vdc {v} dead {td * 1e6:.0f} us, F vs R"
+                chk(kind, n + ", f min [Hz]", abs(f["f min [Hz]"] - r["f min [Hz]"]), 2e-3)
+                chk(kind, n + ", max phase |i1| [pu]", abs(f["max phase |i1| [pu]"] - r["max phase |i1| [pu]"]), 0.05)
+                chk(kind, n + ", ripple rms [rel]",
+                    abs(f["ripple rms 0.5-1 s [pu]"] / r["ripple rms 0.5-1 s [pu]"] - 1), 0.10)
+                chk(kind, n + ", mean grid power [rel]",
+                    abs(f["mean grid power 0.5-1 s [pu]"] / r["mean grid power 0.5-1 s [pu]"] - 1), 0.005)
+                chk(kind, n + ", start transient over by [s]", f["start transient over by [s]"], 0.05)
+            for z in (0.01, 0.001, 0.1):
+                kind = "required" if z == 0.01 else "explore"
+                f, g = R[key(c, vdc=v)], R[key(c, zth=z, vdc=v)]
+                chk(kind, f"T4 {c} vdc {v} F zth 0 vs {z}, f min [Hz]", abs(f["f min [Hz]"] - g["f min [Hz]"]), 1e-3)
+                chk(kind, f"T4 {c} vdc {v} F zth 0 vs {z}, max phase |i1| [pu]",
+                    abs(f["max phase |i1| [pu]"] - g["max phase |i1| [pu]"]), 0.02)
+            f, g = R[key(c, sub=10, pw=5, vdc=v)], R[key(c, sub=10, pw=5, zth=0.01, vdc=v)]
+            chk("explore", f"T4 {c} vdc {v} R zth 0 vs 0.01, f min [Hz]", abs(f["f min [Hz]"] - g["f min [Hz]"]), 1e-3)
     e1, e2 = t1()
     chk("required", "T1 round trip [rel]", e1, 1e-12)
     chk("required", "T1 power identity [rel]", e2, 1e-12)
     di, dv, dp = t2()
-    n = "T2 sat adopted F, applied 1 us mean phase voltages, dq vs abc exact"
+    n = "T2 sat adopted F vdc 4.0, applied 1 us mean phase voltages, dq vs abc exact"
     chk("required", n + ", phase i1 [pu]", di, 0.01)
     chk("required", n + ", vc [pu]", dv, 0.01)
     chk("required", n + ", mean converter power [rel]", dp, 0.001)

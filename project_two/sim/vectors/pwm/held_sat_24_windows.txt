@@ -1,0 +1,4 @@
+start 0
+trip 998976
+limit 1851392
+clip 2585600

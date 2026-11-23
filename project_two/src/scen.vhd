@@ -4,13 +4,14 @@ USE ieee.numeric_std.ALL;
 USE work.gfm_pkg.ALL;
 
 -- Board settings and scenario inputs of the core.
---   KEY0 held: the core reloads its start state and SW0..4 are read; they stay fixed after release.
---   KEY0, KEY1, SW0..4 and SW17 (page, pg) pass two flip-flops first; at power-up the core stays in
+--   KEY0 held: the core reloads its start state and SW0..6 are read; they stay fixed after release.
+--   KEY0, KEY1, SW0..6 and SW17 (page, pg) pass two flip-flops first; at power-up the core stays in
 --   reset until the switch flip-flops hold real values.
 --   SW0 fb; SW2:1 limit mode 00 1.2 pu, 01 1.2 pu then 1.0 pu 10 s after the trip, 10 no limit,
 --   11 reserved (err = 1, the core stays in reset until a reset with a valid mode); SW3 trip A (1.4 GW)
 --   instead of trip B (3.3 GW); SW4 automatic trip at 1 s (KEY1 ignored), else a trip at the next step
---   after a KEY1 press. The trip happens once.
+--   after a KEY1 press. The trip happens once. SW5 vdc 4.0 pu instead of 2.4 pu (vs), SW6 the PWM model
+--   instead of the average one (md).
 --   Every scenario value changes only at a step edge. Trip time, the 0.01 s timer t and the limit change
 --   count model steps, so they keep model time if the model is ever slowed down.
 --   Records until the next reset: xmin (lowest x from the trip on), seen (the limiter has acted).
@@ -19,7 +20,7 @@ ENTITY scen IS
 	GENERIC (kt : INTEGER := SKT; nc : INTEGER := SNC; nw : INTEGER := SNW);
 	PORT (clk, step, lim : IN STD_LOGIC;
 		key  : IN STD_LOGIC_VECTOR(1 DOWNTO 0);      -- KEY1, KEY0, active low
-		sw   : IN STD_LOGIC_VECTOR(4 DOWNTO 0);
+		sw   : IN STD_LOGIC_VECTOR(6 DOWNTO 0);
 		page : IN STD_LOGIC;
 		x    : IN SIGNED(31 DOWNTO 0);
 		load : BUFFER STD_LOGIC;
@@ -30,7 +31,8 @@ ENTITY scen IS
 		lm   : BUFFER INTEGER RANGE 0 TO 3;
 		pg, fb, ta, au, err, tr, sh, seen, blink : BUFFER STD_LOGIC;
 		xmin : BUFFER SIGNED(31 DOWNTO 0);
-		t    : BUFFER INTEGER RANGE 0 TO 10000);     -- 0.01 s since the trip
+		t    : BUFFER INTEGER RANGE 0 TO 10000;      -- 0.01 s since the trip
+		vs, md : BUFFER STD_LOGIC := '0');
 END scen;
 
 ARCHITECTURE a OF scen IS
@@ -40,7 +42,7 @@ ARCHITECTURE a OF scen IS
 		RETURN RESIZE(SHIFT_RIGHT(v * v, 28), 38);
 	END th2;
 	SIGNAL r1, r2, k1, k2, k3, p1, pend : STD_LOGIC := '0';
-	SIGNAL s1, s2 : STD_LOGIC_VECTOR(4 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL s1, s2 : STD_LOGIC_VECTOR(6 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL up : STD_LOGIC_VECTOR(2 DOWNTO 0) := "000";   -- 111 once s2 holds sampled switches
 	SIGNAL kc : INTEGER RANGE 0 TO kt - 1 := 0;
 	SIGNAL pc : INTEGER RANGE 0 TO nc - 1 := 0;
@@ -77,6 +79,8 @@ BEGIN
 				lm <= TO_INTEGER(UNSIGNED(s2(2 DOWNTO 1)));
 				ta <= s2(3);
 				au <= s2(4);
+				vs <= s2(5);
+				md <= s2(6);
 			END IF;
 			IF load = '1' THEN
 				tr <= '0';

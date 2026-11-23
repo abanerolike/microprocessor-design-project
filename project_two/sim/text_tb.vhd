@@ -11,6 +11,7 @@ USE ieee.numeric_std.ALL;
 --   MIN OK / LOW at the edge: 59.2 Hz for trip B (lo = -28633115 OK, one less LOW) and 59.7 Hz for trip A
 --   (-10737418 OK, one less LOW); OK green, LOW red
 --   inputs changed just after vertical blank do not reach the frame being drawn
+--   model field at the end of the condition line: AVG VDC -.- , PWM VDC2.4pu, PWM VDC4.0pu
 ENTITY text_tb IS
 END text_tb;
 
@@ -68,7 +69,7 @@ ARCHITECTURE a OF text_tb IS
 		x"00", x"00", x"3C", x"40", x"38", x"04", x"78", x"00"   -- 's'
 	);
 	TYPE shot IS ARRAY (0 TO 639, 0 TO 479) OF INTEGER RANGE 0 TO 15;
-	SIGNAL clk, ta, fb, sh, au, tr, dt : STD_LOGIC := '0';
+	SIGNAL clk, ta, fb, sh, au, tr, dt, md, vd : STD_LOGIC := '0';
 	SIGNAL lm : INTEGER RANGE 0 TO 3 := 0;
 	SIGNAL dd : STD_LOGIC_VECTOR(79 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL db : STD_LOGIC_VECTOR(0 TO 4) := "00000";
@@ -79,7 +80,7 @@ ARCHITECTURE a OF text_tb IS
 BEGIN
 	dut : ENTITY work.screen GENERIC MAP (1) PORT MAP (clk, '1', '0', '0', '0', tr, sh, ta, fb, au, dt, lm, dd, db,
 		lo, (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), r, g, b, ck, hs,
-		vs, bl);
+		vs, bl, md, vd);
 
 	PROCESS
 	BEGIN
@@ -205,7 +206,7 @@ BEGIN
 		grab;
 		grab;
 		see(0, 0, "B3.3GW SAT 1.2pu            READY AUTO1s");
-		see(2, 0, "H3.3s GFM10% P0 0.9pu R1GW");
+		see(2, 0, "H3.3s GFM10% P0 0.9pu R1GW  AVG VDC -.- ");
 		see(4, 0, "F 60.00Hz           MIN --.--Hz      ");
 		see(6, 0, "SHED 00.00GW        T --.--s");
 		see(8, 0, "F(Hz)  F  REF59.2  UFLS LEVEL");
@@ -236,6 +237,7 @@ BEGIN
 		au <= '0';
 		tr <= '1';
 		dt <= '1';
+		md <= '1';                                       -- PWM model, vdc 2.4 pu
 		dd <= hex4(1268) & hex4(2000) & hex4(960) & hex4(5871) & hex4(5992);
 		lo <= TO_SIGNED(-10737418, 32);
 		grab;
@@ -247,14 +249,17 @@ BEGIN
 		check(has(33, 4, 2) AND has(34, 4, 2), "OK not green");
 		see(28, 20, "PK 1.268pu");
 		check(has(23, 28, 2) AND NOT has(23, 28, 1), "PK not green");
+		see(2, 28, "PWM VDC2.4pu");
 
 		-- frame 3: one LSB lower: LOW in red; out-of-range F; reserved mode
 		lo <= TO_SIGNED(-10737419, 32);
 		db <= "10001";
 		lm <= 3;
+		vd <= '1';
 		grab;
 		grab;
 		see(0, 0, "SW2:1=11 INVALID            INVALID     ");
+		see(2, 28, "PWM VDC4.0pu");
 		see(4, 0, "F  ERR Hz           MIN 58.71Hz LOW  ");
 		see(28, 20, "PK  ERR pu");
 		check(has(32, 4, 3) AND has(34, 4, 3) AND NOT has(26, 4, 3), "LOW not red, or red elsewhere");
@@ -303,7 +308,7 @@ BEGIN
 		see(28, 20, "PK 9.999pu");
 
 		ASSERT errs = 0 REPORT "text: FAIL, " & INTEGER'IMAGE(errs) & " errors" SEVERITY FAILURE;
-		REPORT "text: PASS, fixed text, five settings, values, MIN OK/LOW edges, PK, colours, frame copy";
+		REPORT "text: PASS, fixed text, five settings, values, MIN OK/LOW edges, PK, model, colours, frame copy";
 		done <= TRUE;
 		WAIT;
 	END PROCESS;

@@ -11,6 +11,9 @@ PACKAGE gfm_pkg IS
 	TYPE words IS ARRAY (NATURAL RANGE <>) OF SIGNED(31 DOWNTO 0);
 	TYPE seeds IS ARRAY (0 TO 191) OF INTEGER RANGE 0 TO 131071;
 	TYPE segs IS ARRAY (0 TO 7) OF STD_LOGIC_VECTOR(6 DOWNTO 0);   -- HEX0..7, gfedcba, active low
+	TYPE duties IS ARRAY (0 TO 2) OF INTEGER RANGE 0 TO 6250;     -- PWM compare values, legs a, b, c
+	TYPE deads IS ARRAY (0 TO 2) OF INTEGER RANGE 0 TO 100;       -- PWM dead-time counters
+	TYPE duty2 IS ARRAY (STD_LOGIC RANGE '0' TO '1') OF duties;   -- one set per vdc (0: 2.4 pu, 1: 4.0 pu)
 
 	-- grid model for H = 3.3 s, D = 2, K/R = 6, Tg = 3 s, r = 10 %, all per 1.024 ms update.
 	-- A new H (or D, K, R, Tg, r) changes both the integer and its F, so the two are kept together.
@@ -92,6 +95,13 @@ PACKAGE gfm_pkg IS
 		X"0E75ED1F", X"0145815C", X"0FEEB90C", X"0000037E", X"0E75F0A7", X"FEA472FB",
 		X"FFFFB557", X"FFFFE3EB", X"00019541", X"00002427", X"0E667C50", X"015A1CE2");
 	CONSTANT ST_TH : UNSIGNED(39 DOWNTO 0) := X"0F91EB84C9";
+	-- PWM at step 0: v1 of the start state, the duties made from it at angle 0 for each vdc (all three
+	-- gates on at the first compare) and the signs of the start currents (b and c below zero)
+	CONSTANT ST_V1R : INTEGER := 242698135;
+	CONSTANT ST_V1I : INTEGER := 110385843;
+	CONSTANT ST_DU : duty2 := ((5480, 2876, 1021), (4538, 2976, 1863));
+	CONSTANT ST_NG : STD_LOGIC_VECTOR(0 TO 2) := "011";
+	CONSTANT ST_KN : UNSIGNED(39 DOWNTO 0) := TO_UNSIGNED(65970688, 40);   -- nominal phase step
 
 	FUNCTION rs (v : SIGNED; n : NATURAL) RETURN SIGNED;
 	FUNCTION sat (v : SIGNED; w : POSITIVE) RETURN SIGNED;

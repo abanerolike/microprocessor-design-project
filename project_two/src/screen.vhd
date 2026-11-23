@@ -14,7 +14,8 @@ ENTITY screen IS
 		lo  : IN SIGNED(31 DOWNTO 0);
 		x, ir, ii, shed, imx : IN SIGNED(31 DOWNTO 0);
 		r, g, b : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
-		ck, hs, vs, bl : OUT STD_LOGIC);
+		ck, hs, vs, bl : OUT STD_LOGIC;
+		md, vd : IN STD_LOGIC := '0');                 -- for the text: PWM model, vdc 4.0 pu
 END screen;
 
 ARCHITECTURE a OF screen IS
@@ -30,7 +31,7 @@ BEGIN
 	rc : ENTITY work.rec GENERIC MAP (nk) PORT MAP (clk, load, step, vb, x, ir, ii, shed, imx, lim, en, tr, sh,
 		ra, q, wp, nv);
 	sc : ENTITY work.scope PORT MAP (clk, pe, ta, ton, hc, vc, wp, nv, q, tc, ra, rgb);
-	tx : ENTITY work.text PORT MAP (clk, pe, vb, ta, fb, sh, au, tr, dt, hc, vc, lm, dd, db, lo, ton, tc);
+	tx : ENTITY work.text PORT MAP (clk, pe, vb, ta, fb, sh, au, tr, dt, hc, vc, lm, dd, db, lo, ton, tc, md, vd);
 	r <= rgb(29 DOWNTO 20);
 	g <= rgb(19 DOWNTO 10);
 	b <= rgb(9 DOWNTO 0);

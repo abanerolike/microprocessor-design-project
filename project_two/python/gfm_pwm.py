@@ -12,6 +12,9 @@ the leg sits on the diode the phase current flows through: i_x > 0 (out of the l
 i_x < 0 -> +vdc/2, i_x = 0 -> -vdc/2, and 0 (mid point) when |i_x| < zth (zth = 0: sign only).
 Phase voltage = leg voltage minus the mean of the three legs (three wires), then back to the frame:
 v = 2/3 sum v_x e^{-j(w0 t - 2 pi x / 3)}. Voltages are in pu of the phase peak, 480 sqrt(2/3) V.
+Start (load): the v1 delay and the mean voltage the plant gets hold the start state's v1, the duty
+registers hold the duty of that v1 at angle 0, the carrier is at 0 and the gates match the first compare
+with the dead time over. This is the emulator's start condition, not a converter start-up sequence.
 """
 import numpy as np
 from numba import njit
@@ -68,8 +71,14 @@ def run(c, rr, p, meth, n, pg0, ufls_on, tab, sub, mode, vdc, nd, zth, nlog, pe,
         wth = w - ks * max(mag - imax, 0.0) if meth == 1 else w
         v1 = (vcf + kpi * (ilim - i1f) + ui + 1j * w * xl1 * i1f) / rot
         v1max = max(v1max, abs(v1))
-        if k == 0:
-            v1p = v1
+        if k == 0:                                  # load: registers start from the start state's v1
+            v1p, up = v1, v1
+            for ph in range(3):
+                d = 0.5 + (v1 * a3[ph]).real / vdc     # carrier at 0, frame angle 0
+                dc[ph] = d < 0.0 or d > 1.0
+                dl[ph] = min(max(d, 0.0), 1.0)
+                cmd[ph] = dl[ph] * nh > 0           # gates as the first compare, dead time over
+                leg[ph] = vdc / 2 if cmd[ph] else -vdc / 2
         vd = v1p if late else v1                    # v1 the duty register can load during this step
         vg = np.exp(1j * thg)
         pgrid = (vg * np.conj(i2)).real
@@ -147,7 +156,7 @@ def run(c, rr, p, meth, n, pg0, ufls_on, tab, sub, mode, vdc, nd, zth, nlog, pe,
                 for ph in range(3):
                     ab[ph] = (u * e * a3[ph]).real
             um += u / sub
-            if late and k > 0:                          # the mean voltage of a step is ready at its end:
+            if late:                                    # the mean voltage of a step is ready at its end:
                 u = up                                  # the plant takes last step's, 1 us later, as a
                 for ph in range(3):                     # frame value; ab is that value seen in abc now
                     ab[ph] = (u * e * a3[ph]).real
