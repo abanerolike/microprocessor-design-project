@@ -8,10 +8,15 @@ USE work.gfm_pkg.ALL;
 -- column is always on the right; columns with c < 512 - nv are older than the last reset: empty.
 --   lines (back to front): frame and grid (60 Hz, 1.0 pu, every 5 s from the right edge), UFLS levels
 --   59.0 and 58.0 Hz (dashed), reference 59.7 Hz for trip A or 59.2 Hz for trip B (thick dashes), Imax
---   (dashes), trip and 1.0 pu start (dotted columns), load shed (tick at the top), then the data as one
+--   (dashes), trip and 1.0 pu start (dotted columns), load shed (red tick at the top), then the data as one
 --   vertical bar per column from its lowest to its highest value, and red at the edge row when the
 --   column went past the graph
 --   pipeline, one stage per pixel clock: 1 ring address, 2 colour from the ring word, 3 output (text on top)
+-- cv = 1, comparison view: the time axis starts at the reset (column c is the c-th column of the run, read
+-- from the run's first 512 columns, so q is that word), grid every 5 s from the left. The previous run
+-- (qp, np columns) is drawn under it in yellow short dashes, its events as yellow ticks at the bottom of
+-- the frequency graph; where both runs cover a pixel, even x shows the current run and odd x the previous.
+-- Load shed ticks are red in both views (yellow is the previous run's colour).
 ENTITY scope IS
 	PORT (clk, pe, ta, ton : IN STD_LOGIC;           -- ton, tc: text pixel for the output stage
 		hc  : IN INTEGER RANGE 0 TO 799;
@@ -21,7 +26,10 @@ ENTITY scope IS
 		q   : IN STD_LOGIC_VECTOR(42 DOWNTO 0);
 		tc  : IN STD_LOGIC_VECTOR(29 DOWNTO 0);
 		ra  : OUT UNSIGNED(8 DOWNTO 0);
-		rgb : OUT STD_LOGIC_VECTOR(29 DOWNTO 0));       -- red, green, blue, 10 bits each
+		rgb : OUT STD_LOGIC_VECTOR(29 DOWNTO 0);        -- red, green, blue, 10 bits each
+		cv  : IN STD_LOGIC := '0';
+		qp  : IN STD_LOGIC_VECTOR(42 DOWNTO 0) := (OTHERS => '0');
+		np  : IN INTEGER RANGE 0 TO 512 := 0);
 END scope;
 
 ARCHITECTURE a OF scope IS
@@ -58,11 +66,14 @@ ARCHITECTURE a OF scope IS
 BEGIN
 	PROCESS (clk)
 		VARIABLE k, r, rf : INTEGER;
-		VARIABLE ok : BOOLEAN;
+		VARIABLE ok, op, gl, a, b : BOOLEAN;
 		VARIABLE v : STD_LOGIC_VECTOR(29 DOWNTO 0);
 	BEGIN
 		IF clk = '1' AND clk'EVENT AND pe = '1' THEN
-			ra <= wp + TO_UNSIGNED((hc + 416) MOD 512, 9);    -- hc - 96 mod 512
+			ra <= TO_UNSIGNED((hc + 416) MOD 512, 9);        -- hc - 96 mod 512
+			IF cv = '0' THEN
+				ra <= wp + TO_UNSIGNED((hc + 416) MOD 512, 9);
+			END IF;
 			x1 <= hc;
 			y1 <= vc;
 			rgb <= col;
@@ -72,6 +83,13 @@ BEGIN
 
 			k := x1 - 96;                                    -- screen column, valid in 0..511
 			ok := k >= 512 - nv AND k <= 511;
+			op := FALSE;
+			gl := k = 145 OR k = 267 OR k = 389;
+			IF cv = '1' THEN
+				ok := k >= 0 AND k < nv;
+				op := k >= 0 AND k < np;
+				gl := k = 122 OR k = 244 OR k = 366 OR k = 488;
+			END IF;
 			rf := RFB;
 			IF ta = '1' THEN
 				rf := RFA;
@@ -79,7 +97,7 @@ BEGIN
 			v := BLACK;
 			IF y1 >= 88 AND y1 <= 215 AND x1 >= 95 AND x1 <= 607 THEN
 				r := y1 - 88;
-				IF x1 = 95 OR r = 34 OR k = 145 OR k = 267 OR k = 389 THEN
+				IF x1 = 95 OR r = 34 OR gl THEN
 					v := DARK;
 				END IF;
 				IF (r = U1 OR r = U6) AND x1 MOD 4 < 2 THEN
@@ -95,9 +113,17 @@ BEGIN
 					v := MAGEN;
 				END IF;
 				IF ok AND q(42) = '1' AND r < 6 THEN
+					v := RED;
+				END IF;
+				IF op AND qp(42 DOWNTO 40) /= "000" AND r > 121 THEN
 					v := YELLW;
 				END IF;
-				IF ok AND r >= TO_INTEGER(UNSIGNED(q(6 DOWNTO 0))) AND r <= TO_INTEGER(UNSIGNED(q(13 DOWNTO 7))) THEN
+				a := ok AND r >= TO_INTEGER(UNSIGNED(q(6 DOWNTO 0))) AND r <= TO_INTEGER(UNSIGNED(q(13 DOWNTO 7)));
+				b := op AND (x1 + r) MOD 4 < 2 AND r >= TO_INTEGER(UNSIGNED(qp(6 DOWNTO 0)))
+					AND r <= TO_INTEGER(UNSIGNED(qp(13 DOWNTO 7)));
+				IF b AND NOT (a AND x1 MOD 2 = 0) THEN
+					v := YELLW;
+				ELSIF a THEN
 					v := CYAN;
 				END IF;
 				IF ok AND ((q(14) = '1' AND r = 0) OR (q(15) = '1' AND r = 127)) THEN
@@ -105,7 +131,7 @@ BEGIN
 				END IF;
 			ELSIF y1 >= 240 AND y1 <= 367 AND x1 >= 95 AND x1 <= 607 THEN
 				r := y1 - 240;
-				IF x1 = 95 OR r = 63 OR k = 145 OR k = 267 OR k = 389 THEN
+				IF x1 = 95 OR r = 63 OR gl THEN
 					v := DARK;
 				END IF;
 				IF ok AND q(38) = '1' AND r = TO_INTEGER(UNSIGNED(q(37 DOWNTO 31))) AND x1 MOD 8 < 6 THEN
@@ -117,7 +143,12 @@ BEGIN
 				IF ok AND q(40) = '1' AND y1 MOD 4 < 2 THEN
 					v := MAGEN;
 				END IF;
-				IF ok AND r >= TO_INTEGER(UNSIGNED(q(22 DOWNTO 16))) AND r <= TO_INTEGER(UNSIGNED(q(29 DOWNTO 23))) THEN
+				a := ok AND r >= TO_INTEGER(UNSIGNED(q(22 DOWNTO 16))) AND r <= TO_INTEGER(UNSIGNED(q(29 DOWNTO 23)));
+				b := op AND (x1 + r) MOD 4 < 2 AND r >= TO_INTEGER(UNSIGNED(qp(22 DOWNTO 16)))
+					AND r <= TO_INTEGER(UNSIGNED(qp(29 DOWNTO 23)));
+				IF b AND NOT (a AND x1 MOD 2 = 0) THEN
+					v := YELLW;
+				ELSIF a THEN
 					v := GREEN;
 				END IF;
 				IF ok AND q(30) = '1' AND r = 0 THEN

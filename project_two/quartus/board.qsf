@@ -18,6 +18,7 @@ set_global_assignment -name VHDL_FILE ../src/controller.vhd
 set_global_assignment -name VHDL_FILE ../src/pwm.vhd
 set_global_assignment -name VHDL_FILE ../src/core.vhd
 set_global_assignment -name VHDL_FILE ../src/scen.vhd
+set_global_assignment -name VHDL_FILE ../src/run.vhd
 set_global_assignment -name VHDL_FILE ../src/disp.vhd
 set_global_assignment -name VHDL_FILE ../src/lcd.vhd
 set_global_assignment -name VHDL_FILE ../src/vga.vhd
@@ -29,6 +30,8 @@ set_global_assignment -name VHDL_FILE ../src/board.vhd
 set_location_assignment PIN_N2 -to CLOCK_50
 set_location_assignment PIN_G26 -to KEY[0]
 set_location_assignment PIN_N23 -to KEY[1]
+set_location_assignment PIN_P23 -to KEY[2]
+set_location_assignment PIN_W26 -to KEY[3]
 set_location_assignment PIN_N25 -to SW[0]
 set_location_assignment PIN_N26 -to SW[1]
 set_location_assignment PIN_P25 -to SW[2]

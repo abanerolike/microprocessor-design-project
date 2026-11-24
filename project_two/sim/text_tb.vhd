@@ -1,6 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
+USE work.gfm_pkg.ALL;
 
 -- VGA text read back from whole frames: each character cell is cut from the captured screen, halved to
 -- 8 x 8 (both pixels of every doubled pair must agree) and looked up in the font, so position, half row,
@@ -12,6 +13,9 @@ USE ieee.numeric_std.ALL;
 --   (-10737418 OK, one less LOW); OK green, LOW red
 --   inputs changed just after vertical blank do not reach the frame being drawn
 --   model field at the end of the condition line: AVG VDC -.- , PWM VDC2.4pu, PWM VDC4.0pu
+--   comparison view (SW10): settings line with the model, NOW / PREV table, PREV legend, axis from the
+--   reset, PREV settings and the four notices, state field (PAUSE, STEP, slow motion); SW10 moved just
+--   after vertical blank changes grid and text together on the next frame
 ENTITY text_tb IS
 END text_tb;
 
@@ -77,10 +81,13 @@ ARCHITECTURE a OF text_tb IS
 	SIGNAL r, g, b : STD_LOGIC_VECTOR(9 DOWNTO 0);
 	SIGNAL ck, hs, vs, bl : STD_LOGIC;
 	SIGNAL done : BOOLEAN := FALSE;
+	SIGNAL cmp, ps, bz : STD_LOGIC := '0';
+	SIGNAL sl : INTEGER RANGE 0 TO 3 := 0;
+	SIGNAL pv : shown := NONE;
 BEGIN
 	dut : ENTITY work.screen GENERIC MAP (1) PORT MAP (clk, '1', '0', '0', '0', tr, sh, ta, fb, au, dt, lm, dd, db,
 		lo, (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), r, g, b, ck, hs,
-		vs, bl, md, vd);
+		vs, bl, md, vd, '0', cmp, ps, bz, '1', sl, pv, OPEN, OPEN);
 
 	PROCESS
 	BEGIN
@@ -306,6 +313,108 @@ BEGIN
 		END LOOP;
 		see(4, 0, "F 44.44Hz           MIN 33.33Hz LOW  ");
 		see(28, 20, "PK 9.999pu");
+
+		-- comparison view, frame 6: no previous run, before the trip
+		cmp <= '1';
+		ta <= '0';
+		fb <= '0';
+		lm <= 0;
+		sh <= '0';
+		au <= '1';
+		tr <= '0';
+		dt <= '0';
+		md <= '0';
+		vd <= '0';
+		db <= "00000";
+		dd <= hex4(1000) & hex4(0) & hex4(0) & hex4(5871) & hex4(6000);
+		lo <= (OTHERS => '0');
+		grab;
+		grab;
+		see(0, 0, "B3.3GW SAT 1.2pu      AVG   READY AUTO1s");
+		see(2, 0, "     F(Hz) MIN(Hz)   SH(GW) PK(pu) T(s) ");
+		see(4, 0, "NOW  60.00 --.--     00.00  -.---  --.--");
+		see(6, 0, "PREV ----                               ");
+		see(8, 0, "F(Hz)  F PREV REF59.2 UFLS LEVEL");
+		see(28, 0, "I1(pu)  I1 PREV IMAX(NOW)");
+		see(49, 0, "RESET 0      5      10      15     20.97");
+		see(51, 0, "TRIP  STEP  UFLS  T: S AFTER TRIP");
+		see(53, 0, "PREV ----                               ");
+		see(55, 0, "                                        ");
+		see(57, 0, "H3.3s GFM10% P0 0.9pu R1GW              ");
+
+		-- frame 7: trip A after the trip, a previous run A FB SPEC 1.0pu automatic: only SAT / FB differ.
+		-- NOW lowest exactly 59.7 Hz (OK), PREV one LSB lower (LOW)
+		ta <= '1';
+		lm <= 1;
+		sh <= '1';
+		tr <= '1';
+		dt <= '1';
+		dd <= hex4(1268) & hex4(2000) & hex4(960) & hex4(5871) & hex4(5992);
+		lo <= TO_SIGNED(-10737418, 32);
+		pv <= (hex4(1200) & hex4(1440) & hex4(480) & hex4(5900) & hex4(5985), "00000", '1',
+			TO_SIGNED(-10737419, 32), "10111001", '1');
+		grab;
+		grab;
+		see(0, 0, "A1.4GW SAT SPEC 1.0pu AVG   TRIP AUTO   ");
+		see(4, 0, "NOW  59.92 58.71  OK 09.60  1.268  20.00");
+		see(6, 0, "PREV 59.85 59.00 LOW 04.80  1.200  14.40");
+		see(8, 14, "REF59.7");
+		see(53, 0, "PREV A1.4GW FB  SPEC 1.0pu AVG    AUTO  ");
+		see(55, 0, "SAME SETUP EXCEPT SAT VS FB             ");
+		check(has(18, 4, 2) AND has(18, 6, 3), "NOW OK not green or PREV LOW not red");
+		check(has(0, 55, 2), "SAME SETUP not green");
+
+		-- frame 8: manual timing, paused; frame 9: other limit, slow motion 1:10; frame 10: step run
+		au <= '0';
+		ps <= '1';
+		grab;
+		grab;
+		see(0, 28, "PAUSE       ");
+		see(55, 0, "MANUAL TIMING ");
+		check(has(0, 55, 5) AND NOT has(0, 55, 2), "MANUAL TIMING not orange");
+		au <= '1';
+		lm <= 0;
+		ps <= '0';
+		sl <= 2;
+		grab;
+		grab;
+		see(0, 28, "TRIP  1:10  ");
+		see(55, 0, "DIFF SETUP ");
+		bz <= '1';
+		ps <= '1';
+		grab;
+		grab;
+		see(0, 28, "STEP        ");
+
+		-- SW10 moved just after vertical blank: the whole frame keeps the old view (grid and text), the
+		-- next one has the new view everywhere
+		cmp <= '0';
+		bz <= '0';
+		ps <= '0';
+		grab;
+		grab;
+		WAIT UNTIL vs = '0';
+		WAIT UNTIL vs = '1';
+		cmp <= '1';
+		ln := -1;
+		WHILE ln < 479 OR bl = '1' LOOP
+			WAIT UNTIL ck = '1' AND ck'EVENT;
+			IF bl = '1' AND pbl = '0' THEN
+				ln := ln + 1;
+				px := 0;
+			END IF;
+			IF bl = '1' THEN
+				s(px, ln) := name(r, g, b);
+				px := px + 1;
+			END IF;
+			pbl := bl;
+		END LOOP;
+		check(s(96 + 145, 88 + 10) = 6 AND s(96 + 122, 88 + 10) = 0 AND s(96 + 122, 240 + 10) = 0,
+			"view switched in the middle of a frame: grid");
+		see(2, 0, "H3.3s GFM10% P0 0.9pu R1GW");
+		grab;
+		check(s(96 + 122, 88 + 10) = 6 AND s(96 + 145, 88 + 10) = 0, "comparison grid not in the next frame");
+		see(2, 5, "F(Hz) MIN(Hz)");
 
 		ASSERT errs = 0 REPORT "text: FAIL, " & INTEGER'IMAGE(errs) & " errors" SEVERITY FAILURE;
 		REPORT "text: PASS, fixed text, five settings, values, MIN OK/LOW edges, PK, model, colours, frame copy";

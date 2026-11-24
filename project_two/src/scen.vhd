@@ -32,7 +32,8 @@ ENTITY scen IS
 		pg, fb, ta, au, err, tr, sh, seen, blink : BUFFER STD_LOGIC;
 		xmin : BUFFER SIGNED(31 DOWNTO 0);
 		t    : BUFFER INTEGER RANGE 0 TO 10000;      -- 0.01 s since the trip
-		vs, md : BUFFER STD_LOGIC := '0');
+		vs, md : BUFFER STD_LOGIC := '0';
+		sv   : OUT STD_LOGIC);                      -- one clock as KEY0 goes down: keep the run that ends
 END scen;
 
 ARCHITECTURE a OF scen IS
@@ -41,7 +42,7 @@ ARCHITECTURE a OF scen IS
 	BEGIN
 		RETURN RESIZE(SHIFT_RIGHT(v * v, 28), 38);
 	END th2;
-	SIGNAL r1, r2, k1, k2, k3, p1, pend : STD_LOGIC := '0';
+	SIGNAL r1, r2, r3, k1, k2, k3, p1, pend : STD_LOGIC := '0';
 	SIGNAL s1, s2 : STD_LOGIC_VECTOR(6 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL up : STD_LOGIC_VECTOR(2 DOWNTO 0) := "000";   -- 111 once s2 holds sampled switches
 	SIGNAL kc : INTEGER RANGE 0 TO kt - 1 := 0;
@@ -49,6 +50,7 @@ ARCHITECTURE a OF scen IS
 	SIGNAL bc : UNSIGNED(17 DOWNTO 0) := (OTHERS => '0');
 BEGIN
 	load <= r2 OR NOT up(2) OR err;
+	sv <= r2 AND NOT r3;
 	err <= '1' WHEN lm = 3 ELSE '0';
 	blink <= bc(17);
 	p0 <= TO_SIGNED(SP0, 32);
@@ -66,6 +68,7 @@ BEGIN
 		IF clk = '1' AND clk'EVENT THEN
 			r1 <= NOT key(0);                        -- two flip-flops against metastability
 			r2 <= r1;
+			r3 <= r2;
 			k1 <= NOT key(1);
 			k2 <= k1;
 			k3 <= k2;                                -- k2 AND NOT k3: one-clock KEY1 press

@@ -18,11 +18,13 @@ USE work.gfm_pkg.ALL;
 -- pwm = TRUE: a window of vectors/pwm with the PWM model (md = 1, vdc by vdc40). The PWM starts from the
 --   line's PWM words (a window at step 0 from the board's start values); the _sig line has v1 only of the
 --   nodes above, so the check is every state word at every clock and v1 from c = 33
+-- hold: go drops at random clocks (pause, slow motion): the core must hold at c = 45 and then go on
+--   exactly as without the holds, so every check above stays as it is
 -- pre > 0: before the window the loop first runs pre steps with the PWM at the other vdc from the board
 --   start, so a reset must leave nothing of that run behind
 ENTITY core_tb IS
 	GENERIC (fname : STRING := "vectors/held_sat_ufls"; cname : STRING := "vectors/held_sat_config.txt";
-		nsteps : INTEGER := 2048; pwm, vdc40 : BOOLEAN := FALSE; pre : INTEGER := 0);
+		nsteps : INTEGER := 2048; pwm, vdc40, hold : BOOLEAN := FALSE; pre : INTEGER := 0);
 END core_tb;
 
 ARCHITECTURE a OF core_tb IS
@@ -46,7 +48,8 @@ ARCHITECTURE a OF core_tb IS
 	SIGNAL inc : SIGNED(25 DOWNTO 0);
 	SIGNAL incg : SIGNED(24 DOWNTO 0);
 	SIGNAL e : sigs := (OTHERS => (OTHERS => '0'));
-	SIGNAL md, vs : STD_LOGIC := '0';
+	SIGNAL md, vs, hl : STD_LOGIC := '0';
+	SIGNAL go : STD_LOGIC := '1';
 	SIGNAL wq0 : INTEGER RANGE 0 TO 249 := 0;
 	SIGNAL wth0 : UNSIGNED(39 DOWNTO 0) := ST_KN;            -- the board start, so the PWM never sees 'U'
 	SIGNAL wc0 : SIGNED(17 DOWNTO 0) := TO_SIGNED(65536, 18);
@@ -96,7 +99,21 @@ ARCHITECTURE a OF core_tb IS
 BEGIN
 	dut : ENTITY work.core PORT MAP (clk, load, k0, dp, cap, pg0, ks, p0, imx, t2, en, d0, th0, thg0, x0, pm0, sh0,
 		ps0, tk0, ar0, c, step, d, th, thg, x, pm, shed, psum, ticks, armed, cs, sn, cg, sg, pg, dm, il, lim, exc,
-		v1r, v1i, inc, incg, md, vs, wq0, wth0, wc0, ws0, wda0, wdp0, wdc0, wcm0, wng0, wur0, wui0);
+		v1r, v1i, inc, incg, md, vs, wq0, wth0, wc0, ws0, wda0, wdp0, wdc0, wcm0, wng0, wur0, wui0, go, hl);
+
+	PROCESS                                          -- random holds: go low for 1..16 clocks, now and then
+		VARIABLE lf : UNSIGNED(15 DOWNTO 0) := X"BEEF";
+	BEGIN
+		WAIT UNTIL clk = '1' AND clk'EVENT;
+		lf := lf(14 DOWNTO 0) & (lf(15) XOR lf(13) XOR lf(12) XOR lf(10));
+		IF hold AND lf(3 DOWNTO 0) = "0000" THEN
+			go <= '0';
+			FOR i IN 0 TO TO_INTEGER(lf(7 DOWNTO 4)) LOOP
+				WAIT UNTIL clk = '1' AND clk'EVENT;
+			END LOOP;
+			go <= '1';
+		END IF;
+	END PROCESS;
 
 	PROCESS
 	BEGIN
@@ -296,9 +313,9 @@ BEGIN
 			nsh <= vsh;
 			ntk <= vtk;
 			nar <= var;
-			WAIT UNTIL clk = '1' AND clk'EVENT AND step = '1' FOR 51 * 20 ns;
+			WAIT UNTIL clk = '1' AND clk'EVENT AND step = '1' FOR 2000 * 20 ns;
 			IF step /= '1' THEN
-				REPORT "timeout: no step pulse within 51 clocks" SEVERITY FAILURE;
+				REPORT "timeout: no step pulse" SEVERITY FAILURE;
 			END IF;
 			IF kn /= k + 1 THEN
 				errs := errs + 1;

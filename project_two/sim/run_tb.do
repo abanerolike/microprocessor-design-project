@@ -6,13 +6,14 @@ vlib work
 vcom -93 ../src/gfm_pkg.vhd tb_util.vhd ../src/tick.vhd ../src/nco.vhd ../src/plant_slow.vhd ../src/plant_fast.vhd
 vcom -93 ../src/meas.vhd ../src/vctrl.vhd ../src/limiter.vhd ../src/cctrl.vhd ../src/controller.vhd ../src/pwm.vhd
 vcom -93 ../src/core.vhd
-vcom -93 ../src/scen.vhd ../src/disp.vhd ../src/lcd.vhd ../src/vga.vhd ../src/rec.vhd ../src/scope.vhd ../src/text.vhd
+vcom -93 ../src/scen.vhd ../src/run.vhd ../src/disp.vhd ../src/lcd.vhd ../src/vga.vhd ../src/rec.vhd ../src/scope.vhd ../src/text.vhd
 vcom -93 ../src/screen.vhd ../src/board.vhd scen_tb.vhd disp_tb.vhd lcd_tb.vhd vga_tb.vhd rec_tb.vhd scope_tb.vhd
-vcom -93 screen_tb.vhd text_tb.vhd board_tb.vhd
+vcom -93 screen_tb.vhd text_tb.vhd board_tb.vhd run_tb.vhd keep_tb.vhd bank_tb.vhd prev_tb.vhd
 vcom -93 hrd_tb.vhd tick_tb.vhd nco_tb.vhd plant_slow_tb.vhd plant_slow_edge_tb.vhd plant_fast_tb.vhd plant_fast_edge_tb.vhd
 vcom -93 meas_tb.vhd vctrl_tb.vhd limiter_tb.vhd limiter_edge_tb.vhd cctrl_tb.vhd controller_tb.vhd core_tb.vhd
 vcom -93 pwm_tb.vhd
-foreach t {hrd_tb plant_slow_edge_tb plant_fast_edge_tb limiter_edge_tb scen_tb disp_tb lcd_tb vga_tb rec_tb scope_tb screen_tb text_tb board_tb} {
+foreach t {hrd_tb plant_slow_edge_tb plant_fast_edge_tb limiter_edge_tb scen_tb disp_tb lcd_tb vga_tb rec_tb scope_tb screen_tb text_tb board_tb run_tb keep_tb
+		bank_tb prev_tb} {
 	vsim -c $t
 	run -all
 	quit -sim
@@ -59,6 +60,13 @@ foreach g {{spec_fb_24_imax_step -gpause=true} {held_fb_40_start -gvdc40=true -g
 	run -all
 	quit -sim
 }
+# the model held at random clocks (go low for 1..16 clocks) runs bit for bit the same, average and PWM
+vsim -c -ghold=true core_tb
+run -all
+quit -sim
+vsim -c -gfname=vectors/pwm/held_sat_24_trip -gpwm=true -ghold=true core_tb
+run -all
+quit -sim
 # a reset after a PWM run at the other vdc leaves nothing behind
 vsim -c -gfname=vectors/pwm/held_fb_24_start -gcname=vectors/held_fb_config.txt -gpwm=true -gpre=3000 core_tb
 run -all

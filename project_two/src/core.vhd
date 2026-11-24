@@ -53,7 +53,9 @@ ENTITY core IS
 		wcm0    : IN STD_LOGIC_VECTOR(0 TO 2) := "111";
 		wng0    : IN STD_LOGIC_VECTOR(0 TO 2) := ST_NG;
 		wur0    : IN SIGNED(33 DOWNTO 0) := TO_SIGNED(ST_V1R, 34);
-		wui0    : IN SIGNED(33 DOWNTO 0) := TO_SIGNED(ST_V1I, 34));
+		wui0    : IN SIGNED(33 DOWNTO 0) := TO_SIGNED(ST_V1I, 34);
+		go      : IN STD_LOGIC := '1';                    -- 0: hold the step at c = 45 (pause, slow motion)
+		hl      : BUFFER STD_LOGIC);
 END core;
 
 ARCHITECTURE a OF core IS
@@ -64,19 +66,21 @@ ARCHITECTURE a OF core IS
 	SIGNAL ig : SIGNED(25 DOWNTO 0);
 	SIGNAL n1r, n1i : SIGNED(31 DOWNTO 0);
 	SIGNAL ur, ui, ar, ai : SIGNED(33 DOWNTO 0);
+	SIGNAL run : STD_LOGIC;
 BEGIN
+	run <= NOT hl;
 	f0 <= d0(6 TO 11) & d0(16 TO 17);
 	d <= xp & f(0 TO 5) & s & f(6 TO 7);
 	ig <= RESIZE(incg, 26);
 	ar <= ur WHEN md = '1' ELSE v1r;
 	ai <= ui WHEN md = '1' ELSE v1i;
 
-	tm : ENTITY work.tick PORT MAP (clk, load, k0, c, step, slow);
+	tm : ENTITY work.tick PORT MAP (clk, load, k0, c, step, slow, go, hl);
 	n1 : ENTITY work.nco PORT MAP (clk, load, step, c, th0, inc, th, cs, sn);
 	n2 : ENTITY work.nco PORT MAP (clk, load, step, c, thg0, ig, thg, cg, sg);
 	pf : ENTITY work.plant_fast PORT MAP (clk, load, step, c, ar, ai, cg, sg,
 		d0(0), d0(1), d0(2), d0(3), d0(4), d0(5), xp(0), xp(1), xp(2), xp(3), xp(4), xp(5), pg, n1r, n1i);
-	pw : ENTITY work.pwm PORT MAP (clk, load, '1', vs, c, v1r, v1i, n1r, n1i, wq0, wth0, wc0, ws0, wda0, wdp0, wdc0,
+	pw : ENTITY work.pwm PORT MAP (clk, load, run, vs, c, v1r, v1i, n1r, n1i, wq0, wth0, wc0, ws0, wda0, wdp0, wdc0,
 		wcm0, wng0, wur0, wui0, ur, ui, OPEN, OPEN, OPEN, OPEN, OPEN, OPEN, OPEN);
 	ps : ENTITY work.plant_slow PORT MAP (clk, load, step, slow, c, pg, pg0, dp, cap, x0, pm0, sh0, ps0, tk0, ar0,
 		x, pm, shed, psum, ticks, armed, incg);

@@ -11,6 +11,11 @@ USE ieee.numeric_std.ALL;
 --   above and below flags at one address each
 --   reference rows 44..45 for trip A and 61..62 for trip B (two frames), UFLS rows 69 and 103, 60 Hz row
 --   34, frame line at x 95 and y 216, 368
+--   comparison view (third frame, nv = 300, np = 400): column c reads address c; a previous-run ring
+--   with its own bars (frequency rows (c + 10) mod 90 .. + 10, inside the current bar, |i1| rows 80..90) and a trip at 350:
+--   both runs on a pixel: even x current, odd x previous where (x + r) mod 4 < 2; only the previous run:
+--   yellow dashes; its trip as a yellow tick on rows 122..127; grid every 5 s from the left (122, 244,
+--   366, 488)
 ENTITY scope_tb IS
 END scope_tb;
 
@@ -24,7 +29,9 @@ ARCHITECTURE a OF scope_tb IS
 	SIGNAL q : STD_LOGIC_VECTOR(42 DOWNTO 0);
 	SIGNAL rgb : STD_LOGIC_VECTOR(29 DOWNTO 0);
 	SIGNAL done : BOOLEAN := FALSE;
-	SIGNAL mem : ring;
+	SIGNAL mem, memp : ring;
+	SIGNAL cv : STD_LOGIC := '0';
+	SIGNAL qp : STD_LOGIC_VECTOR(42 DOWNTO 0);
 	SIGNAL white : STD_LOGIC_VECTOR(29 DOWNTO 0) := (OTHERS => '1');
 
 	FUNCTION c (r, g, b : INTEGER) RETURN STD_LOGIC_VECTOR IS
@@ -73,14 +80,27 @@ ARCHITECTURE a OF scope_tb IS
 		w(30) := STD_LOGIC'VAL(BOOLEAN'POS(a = 380) + 2);
 		RETURN w;
 	END word;
+
+	FUNCTION prev (a : INTEGER) RETURN STD_LOGIC_VECTOR IS
+		VARIABLE w : STD_LOGIC_VECTOR(42 DOWNTO 0) := (OTHERS => '0');
+	BEGIN
+		w(6 DOWNTO 0) := STD_LOGIC_VECTOR(TO_UNSIGNED((a + 10) MOD 90, 7));
+		w(13 DOWNTO 7) := STD_LOGIC_VECTOR(TO_UNSIGNED((a + 10) MOD 90 + 10, 7));
+		w(22 DOWNTO 16) := STD_LOGIC_VECTOR(TO_UNSIGNED(80, 7));
+		w(29 DOWNTO 23) := STD_LOGIC_VECTOR(TO_UNSIGNED(90, 7));
+		w(40) := STD_LOGIC'VAL(BOOLEAN'POS(a = 350) + 2);
+		RETURN w;
+	END prev;
 BEGIN
 	tm : ENTITY work.vga PORT MAP (clk, pe, hc, vc, vb, ck, hs, vs, bl);
-	dut : ENTITY work.scope PORT MAP (clk, pe, ta, '0', hc, vc, "001100100", 300, q, white, ra, rgb);
+	dut : ENTITY work.scope PORT MAP (clk, pe, ta, '0', hc, vc, "001100100", 300, q, white, ra, rgb, cv,
+		qp, 400);
 
 	PROCESS
 	BEGIN
 		FOR i IN 0 TO 511 LOOP
 			mem(i) <= word(i);
+			memp(i) <= prev(i);
 		END LOOP;
 		WHILE NOT done LOOP
 			clk <= '0';
@@ -95,6 +115,7 @@ BEGIN
 	BEGIN
 		IF clk = '1' AND clk'EVENT THEN
 			q <= mem(TO_INTEGER(ra));
+			qp <= memp(TO_INTEGER(ra));
 		END IF;
 	END PROCESS;
 
@@ -102,7 +123,8 @@ BEGIN
 		VARIABLE s : shot;
 		VARIABLE errs, px, ln : INTEGER := 0;
 		VARIABLE pbl, pvs : STD_LOGIC := '0';
-		VARIABLE a, top, rf : INTEGER;
+		VARIABLE a, top, rf, x, tp : INTEGER;
+		VARIABLE cur, pre : BOOLEAN;
 
 		PROCEDURE check (ok : BOOLEAN; m : STRING) IS
 		BEGIN
@@ -160,7 +182,7 @@ BEGIN
 			check(s(96 + 300, 88 + 100) = 9 AND s(96 + 300, 88 + 102) /= 9, "trip column not dotted magenta");
 			check(s(96 + 300, 240 + 100) = 9, "trip column missing in the current graph");
 			check(s(96 + 350, 88 + 120) = 5 AND s(96 + 350, 88 + 122) /= 5, "1.0 pu column not dotted orange");
-			check(s(96 + 380, 88 + 2) = 10 AND s(96 + 380, 88 + 6) /= 10, "shed tick wrong");
+			check(s(96 + 380, 88 + 2) = 8 AND s(96 + 380, 88 + 6) /= 8, "shed tick wrong");
 			check(s(96 + 260, 88) = 8, "above flag not red on row 0");
 			check(s(96 + 270, 88 + 127) = 8, "below flag not red on row 127");
 			check(s(96 + 280, 240) = 8, "|i1| above 2 pu not red on row 0");
@@ -175,8 +197,36 @@ BEGIN
 			check(s(96 + 145, 88 + 10) = 1 AND s(96 + 146, 88 + 10) = 0, "5 s grid line wrong");
 			check(s(620, 100) = 0 AND s(50, 300) = 0, "drawing outside the graphs");
 		END LOOP;
+		cv <= '1';                                           -- comparison view, trip B
+		ta <= '0';
+		grab;
+		FOR k IN 0 TO 511 LOOP
+			x := 96 + k;
+			top := k MOD 90;
+			tp := (k + 10) MOD 90;
+			FOR r IN 0 TO 121 LOOP
+				cur := k < 300 AND r >= top AND r <= top + 20;
+				pre := k < 400 AND r >= tp AND r <= tp + 10 AND (x + r) MOD 4 < 2;
+				IF cur AND NOT (pre AND x MOD 2 = 1) THEN
+					check(s(x, 88 + r) = 3, "comparison: current bar missing at column " & INTEGER'IMAGE(k)
+						& " row " & INTEGER'IMAGE(r));
+				ELSIF pre THEN
+					check(s(x, 88 + r) = 10, "comparison: previous dash missing at column " & INTEGER'IMAGE(k)
+						& " row " & INTEGER'IMAGE(r));
+				ELSE
+					check(s(x, 88 + r) /= 3 AND s(x, 88 + r) /= 10, "comparison: bar where none is, column "
+						& INTEGER'IMAGE(k) & " row " & INTEGER'IMAGE(r));
+				END IF;
+			END LOOP;
+			check((s(x, 240 + 85) = 10) = (k < 400 AND (x + 85) MOD 4 < 2) AND (s(x, 240 + 50) = 4) = (k < 300),
+				"comparison: |i1| bars wrong at column " & INTEGER'IMAGE(k));
+		END LOOP;
+		check(s(96 + 350, 88 + 122) = 10 AND s(96 + 350, 88 + 127) = 10 AND s(96 + 351, 88 + 125) /= 10,
+			"previous trip tick wrong");
+		check(s(96 + 488, 88 + 10) = 1 AND s(96 + 122, 240 + 10) = 1 AND s(96 + 145, 88 + 5) /= 1,
+			"comparison grid wrong");
 		ASSERT errs = 0 REPORT "scope: FAIL, " & INTEGER'IMAGE(errs) & " errors" SEVERITY FAILURE;
-		REPORT "scope: PASS, two frames: columns, ring order, bars, records, flags and lines";
+		REPORT "scope: PASS, three frames: columns, ring order, bars, records, flags, lines, comparison";
 		done <= TRUE;
 		WAIT;
 	END PROCESS;

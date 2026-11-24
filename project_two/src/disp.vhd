@@ -22,6 +22,13 @@ USE work.gfm_pkg.ALL;
 -- copied step and no later; its root (Q16, bit by bit in 20 clocks, no multiplier) times 1000, rounded,
 -- is the fifth value. load clears PK, drops the round running and at once shows the values as before the
 -- trip (dashes), until the next copy.
+-- Comparison: ce marks the last step of a graph column. Its end edge takes a copy at once (cm, a refresh
+-- that is due waits), its round runs with nothing else copied (cr, rdy low) and gives c1; the recorder
+-- writes the column only then, and wr keeps c1 as c2, the last column written to the comparison bank
+-- (the first 512 of the run; later columns do not change c2). A save (sv) keeps c2 as pv when the run
+-- has one, or c1 when its column is written with the save (wr on the same clock). While the model is
+-- held (fz) the 0.1 s refresh goes on without a step edge, from the inputs kept at the last edge (or
+-- at the load, before the first edge of a run); a column copy still waits for the edge.
 ENTITY disp IS
 	GENERIC (nr : INTEGER := 5000000);              -- must be longer than one round (80) plus one step
 	PORT (clk, load, step, pg, tr : IN STD_LOGIC;
@@ -31,7 +38,11 @@ ENTITY disp IS
 		dd  : OUT STD_LOGIC_VECTOR(79 DOWNTO 0);       -- the shown digits, value v digit i at 16 v + 4 i
 		db  : OUT STD_LOGIC_VECTOR(0 TO 4);           -- the shown out-of-range flags
 		dt  : OUT STD_LOGIC;                           -- the shown trip flag
-		lo  : OUT SIGNED(31 DOWNTO 0));                -- lowest x of the shown copy, not rounded
+		lo  : OUT SIGNED(31 DOWNTO 0);                 -- lowest x of the shown copy, not rounded
+		fz, ce, wr, sv : IN STD_LOGIC := '0';          -- model held, last step of a column, column written, save
+		set : IN STD_LOGIC_VECTOR(7 DOWNTO 0) := (OTHERS => '0');
+		rdy : OUT STD_LOGIC;                           -- no column copy waiting or being converted
+		pv  : BUFFER shown := NONE);                   -- the kept copy of the previous run
 END disp;
 
 ARCHITECTURE a OF disp IS
@@ -68,15 +79,31 @@ ARCHITECTURE a OF disp IS
 	SIGNAL pt, pt2 : STD_LOGIC := '0';
 	SIGNAL sq, pk : UNSIGNED(35 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL w : INTEGER RANGE 0 TO 24 := 0;                    -- clocks since the copy, root steps
-	SIGNAL rad : UNSIGNED(39 DOWNTO 0);
-	SIGNAL rm : UNSIGNED(23 DOWNTO 0);
-	SIGNAL root : UNSIGNED(19 DOWNTO 0);
+	SIGNAL rad : UNSIGNED(39 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL rm : UNSIGNED(23 DOWNTO 0) := (OTHERS => '0');
+	SIGNAL root : UNSIGNED(19 DOWNTO 0) := (OTHERS => '0');
 	SIGNAL b : INTEGER RANGE 0 TO 15 := 0;
 	SIGNAL m : SIGNED(31 DOWNTO 0);
 	SIGNAL kf : SIGNED(13 DOWNTO 0);
 	SIGNAL p : SIGNED(45 DOWNTO 0);
 	SIGNAL v : UNSIGNED(13 DOWNTO 0);
 	SIGNAL bcd : UNSIGNED(15 DOWNTO 0);
+	SIGNAL ce1, cm, cr : STD_LOGIC := '0';                     -- column copy: asked, its round running
+	SIGNAL c1, c2 : shown := NONE;                             -- copy of the last column, of the last written one
+	SIGNAL lx, lxm, lsh : SIGNED(31 DOWNTO 0) := (OTHERS => '0');    -- the inputs at the last step edge
+	SIGNAL lt : INTEGER RANGE 0 TO 10000 := 0;
+	SIGNAL ltr : STD_LOGIC := '0';
+
+	FUNCTION dig (h : sets) RETURN STD_LOGIC_VECTOR IS
+		VARIABLE r : STD_LOGIC_VECTOR(79 DOWNTO 0);
+	BEGIN
+		FOR k IN 0 TO 4 LOOP
+			FOR i IN 0 TO 3 LOOP
+				r(16 * k + 4 * i + 3 DOWNTO 16 * k + 4 * i) := STD_LOGIC_VECTOR(h(k)(i));
+			END LOOP;
+		END LOOP;
+		RETURN r;
+	END dig;
 BEGIN
 	m <= sx WHEN j = 0 OR (j = 1 AND sx < sxm) ELSE sxm WHEN j = 1 ELSE SIGNED(RESIZE(root, 32)) WHEN j = 4
 		ELSE ssh;
@@ -169,13 +196,55 @@ BEGIN
 			IF rc = 0 THEN
 				due <= '1';
 			END IF;
-			IF due = '1' AND sp = '1' THEN           -- copy, then start a new round; a round that ends
-				cp <= '0';                           -- on this clock belongs to the old copy: drop it
-				sx <= x;
-				sxm <= xmin;
-				ssh <= shed;
-				st <= t;
-				str <= tr;
+			IF cp = '1' AND cr = '1' THEN            -- the round of a column copy is done
+				c1 <= (dig(dg), bad, str, hm, set, '1');
+				IF sx < sxm THEN
+					c1.lo <= sx;
+				ELSE
+					c1.lo <= sxm;
+				END IF;
+				cr <= '0';
+			END IF;
+			ce1 <= ce;
+			IF ce = '1' AND ce1 = '0' THEN
+				cm <= '1';
+			END IF;
+			IF wr = '1' THEN
+				c2 <= c1;
+			END IF;
+			IF sv = '1' AND wr = '1' THEN            -- a column written with the save itself
+				pv <= c1;
+			ELSIF sv = '1' AND c2.ok = '1' THEN
+				pv <= c2;
+			END IF;
+			IF sp = '1' OR load = '1' THEN            -- after a load: the start state, until the first edge
+				lx <= x;
+				lxm <= xmin;
+				lsh <= shed;
+				lt <= t;
+				ltr <= tr;
+			END IF;
+			-- copy, then start a new round; a round that ends on this clock belongs to the old copy: drop it.
+			-- A column copy is taken at the edge that ends the column and nothing else is copied until its
+			-- round is done. While the model is held (fz) a refresh comes at once, from the inputs kept at
+			-- the last step edge: some blocks have already written parts of the next step (shed at c = 12..18)
+			IF cr = '0' AND ((cm = '1' AND sp = '1') OR (due = '1' AND (sp = '1' OR fz = '1'))) THEN
+				cr <= cm AND sp;
+				cp <= '0';
+				IF sp = '1' THEN
+					cm <= '0';
+					sx <= x;
+					sxm <= xmin;
+					ssh <= shed;
+					st <= t;
+					str <= tr;
+				ELSE
+					sx <= lx;
+					sxm <= lxm;
+					ssh <= lsh;
+					st <= lt;
+					str <= ltr;
+				END IF;
 				due <= '0';
 				j <= 0;
 				b <= 0;
@@ -188,6 +257,9 @@ BEGIN
 				pt2 <= '0';
 				str <= '0';
 				cp <= '0';
+				cm <= '0';
+				cr <= '0';
+				c2.ok <= '0';
 				j <= 0;
 				b <= 0;
 			END IF;
@@ -197,12 +269,9 @@ BEGIN
 	db <= hb;
 	dt <= htr;
 	lo <= hm;
+	dd <= dig(hd);
+	rdy <= NOT (cm OR cr);
 	g : FOR i IN 0 TO 3 GENERATE
-		dd(4 * i + 67 DOWNTO 4 * i + 64) <= STD_LOGIC_VECTOR(hd(4)(i));
-		dd(4 * i + 3 DOWNTO 4 * i) <= STD_LOGIC_VECTOR(hd(0)(i));
-		dd(4 * i + 19 DOWNTO 4 * i + 16) <= STD_LOGIC_VECTOR(hd(1)(i));
-		dd(4 * i + 35 DOWNTO 4 * i + 32) <= STD_LOGIC_VECTOR(hd(2)(i));
-		dd(4 * i + 51 DOWNTO 4 * i + 48) <= STD_LOGIC_VECTOR(hd(3)(i));
 		hex(i + 4) <= ERR(i) WHEN (pg = '0' AND hb(0) = '1') OR (pg = '1' AND hb(2) = '1')
 			ELSE seg(hd(0)(i)) WHEN pg = '0' ELSE seg(hd(2)(i));
 		hex(i) <= DASH WHEN htr = '0' ELSE ERR(i) WHEN (pg = '0' AND hb(1) = '1') OR (pg = '1' AND hb(3) = '1')

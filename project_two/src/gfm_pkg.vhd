@@ -14,6 +14,17 @@ PACKAGE gfm_pkg IS
 	TYPE duties IS ARRAY (0 TO 2) OF INTEGER RANGE 0 TO 6250;     -- PWM compare values, legs a, b, c
 	TYPE deads IS ARRAY (0 TO 2) OF INTEGER RANGE 0 TO 100;       -- PWM dead-time counters
 	TYPE duty2 IS ARRAY (STD_LOGIC RANGE '0' TO '1') OF duties;   -- one set per vdc (0: 2.4 pu, 1: 4.0 pu)
+	-- one display copy kept for the comparison: HEX digits (value v digit i at 16 v + 4 i: f, lowest f, shed,
+	-- time, PK), out-of-range flags, trip flag, lowest x, and the run's settings fb, lm (2), ta, au, md, vs, sh
+	TYPE shown IS RECORD
+		dd : STD_LOGIC_VECTOR(79 DOWNTO 0);
+		db : STD_LOGIC_VECTOR(0 TO 4);
+		dt : STD_LOGIC;
+		lo : SIGNED(31 DOWNTO 0);
+		st : STD_LOGIC_VECTOR(7 DOWNTO 0);
+		ok : STD_LOGIC;                                            -- 1: a run is kept
+	END RECORD;
+	CONSTANT NONE : shown := ((OTHERS => '0'), "00000", '0', (OTHERS => '0'), (OTHERS => '0'), '0');
 
 	-- grid model for H = 3.3 s, D = 2, K/R = 6, Tg = 3 s, r = 10 %, all per 1.024 ms update.
 	-- A new H (or D, K, R, Tg, r) changes both the integer and its F, so the two are kept together.

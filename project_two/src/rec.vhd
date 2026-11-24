@@ -18,6 +18,14 @@ USE ieee.numeric_std.ALL;
 --   older than nv are not drawn.
 -- After each step: j = 1 squares i1, 2 keeps the lowest and highest i1^2; at the end of a column 3, 4
 -- take the root of the highest (7 clocks), 5, 6 of the lowest, 7 packs the word: 19 clocks of the 50.
+-- Comparison: the first 512 columns of every run also go to bank f0 or f1 (cb), at address nv. A save
+-- (sv on load, KEY0) of a run with at least one column swaps the banks, so the run just ended becomes
+-- the previous one (qp, nn columns) and the next run writes the other bank; the screen takes the swap
+-- (cbv, np) only at vb. In the comparison view q reads the bank of this run instead of the ring. A
+-- column is written only when the display copy of its end is ready (rdy), so both show the same step;
+-- wr tells the display a bank column was written (none after the 512th). A finished column still
+-- waiting for vb is written to the bank by the save itself (wl), so the kept run ends with the last
+-- column the model finished, unless its display copy was not ready yet (then it ends one before).
 ENTITY rec IS
 	GENERIC (nk : INTEGER := 40960);
 	PORT (clk, load, step, vb : IN STD_LOGIC;
@@ -26,12 +34,20 @@ ENTITY rec IS
 		ra  : IN UNSIGNED(8 DOWNTO 0);
 		q   : OUT STD_LOGIC_VECTOR(42 DOWNTO 0);
 		wp  : BUFFER UNSIGNED(8 DOWNTO 0);
-		nv  : BUFFER INTEGER RANGE 0 TO 512);
+		nv  : BUFFER INTEGER RANGE 0 TO 512;
+		sv, cv : IN STD_LOGIC := '0';                     -- save the run (KEY0 pressed), comparison view
+		rdy : IN STD_LOGIC := '1';                        -- the display copy of the column is ready
+		ce, wr : OUT STD_LOGIC;                           -- last step of a column, column written
+		qp  : OUT STD_LOGIC_VECTOR(42 DOWNTO 0);          -- the previous run at the same address
+		np  : BUFFER INTEGER RANGE 0 TO 512 := 0);        -- its column count
 END rec;
 
 ARCHITECTURE a OF rec IS
 	TYPE ring IS ARRAY (0 TO 511) OF STD_LOGIC_VECTOR(42 DOWNTO 0);
-	SIGNAL mem : ring;
+	SIGNAL mem, f0, f1 : ring;                             -- f0, f1: the first 512 columns of a run
+	SIGNAL q0, r0, r1 : STD_LOGIC_VECTOR(42 DOWNTO 0);
+	SIGNAL cb, cbv, w, wl : STD_LOGIC := '0';              -- bank of this run (cbv: the one shown), writes
+	SIGNAL nn : INTEGER RANGE 0 TO 512 := 0;
 	SIGNAL pd : STD_LOGIC_VECTOR(42 DOWNTO 0);
 	SIGNAL ev : STD_LOGIC_VECTOR(3 DOWNTO 0);            -- shed, 1.0 pu, trip, limiter
 	SIGNAL ih : STD_LOGIC_VECTOR(7 DOWNTO 0);            -- above flag and top row of |i1|
@@ -65,13 +81,30 @@ ARCHITECTURE a OF rec IS
 		RETURN '0' & STD_LOGIC_VECTOR(127 - k);
 	END irow;
 BEGIN
-	PROCESS (clk)                                       -- the ring: written only in vertical blank
+	w <= pv AND vb AND rdy AND NOT load;
+	wl <= pv AND rdy AND load AND sv;                     -- a save keeps a column still waiting for vb
+	wr <= (w OR wl) WHEN nv < 512 ELSE '0';
+	ce <= '1' WHEN n = nk - 1 ELSE '0';
+	q <= q0 WHEN cv = '0' ELSE r0 WHEN cbv = '0' ELSE r1;
+	qp <= r1 WHEN cbv = '0' ELSE r0;
+
+	PROCESS (clk)                                       -- the memories: written only in vertical blank
 	BEGIN
 		IF clk = '1' AND clk'EVENT THEN
-			IF pv = '1' AND vb = '1' AND load = '0' THEN
+			IF w = '1' THEN
 				mem(TO_INTEGER(wp)) <= pd;
 			END IF;
-			q <= mem(TO_INTEGER(ra));
+			IF w = '1' OR wl = '1' THEN
+				IF nv < 512 AND cb = '0' THEN
+					f0(nv) <= pd;
+				END IF;
+				IF nv < 512 AND cb = '1' THEN
+					f1(nv) <= pd;
+				END IF;
+			END IF;
+			q0 <= mem(TO_INTEGER(ra));
+			r0 <= f0(TO_INTEGER(ra));
+			r1 <= f1(TO_INTEGER(ra));
 		END IF;
 	END PROCESS;
 
@@ -81,7 +114,18 @@ BEGIN
 		VARIABLE il : STD_LOGIC_VECTOR(7 DOWNTO 0);
 	BEGIN
 		IF clk = '1' AND clk'EVENT THEN
+			IF vb = '1' THEN                             -- the screen changes bank only between frames
+				cbv <= cb;
+				np <= nn;
+			END IF;
 			IF load = '1' THEN
+				IF sv = '1' AND (nv > 0 OR wl = '1') THEN  -- keep this run; the next one writes the other bank
+					cb <= NOT cb;
+					nn <= nv;
+					IF wl = '1' AND nv < 512 THEN
+						nn <= nv + 1;
+					END IF;
+				END IF;
 				n <= 0;
 				j <= 0;
 				nw <= '1';
@@ -93,7 +137,7 @@ BEGIN
 				sp <= '0';
 				s0 <= (OTHERS => '0');
 			ELSE
-				IF pv = '1' AND vb = '1' THEN
+				IF w = '1' THEN
 					pv <= '0';
 					wp <= wp + 1;
 					IF nv < 512 THEN
