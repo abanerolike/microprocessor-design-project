@@ -15,7 +15,7 @@ ARCHITECTURE a OF quartus_project1_counter_calculator_kk IS
   SIGNAL t          : INTEGER RANGE 0 TO 16666666;   -- 50 MHz / 3 Hz
   SIGNAL step, base : INTEGER RANGE 1 TO 16;         -- counter step 1/5, display base 10/16
   SIGNAL res        : INTEGER RANGE -15 TO 225;      -- A op B (worst case 0-15, 15*15)
-  SIGNAL ie, dv, dz : BOOLEAN;                       -- input error, divide, divide by 0
+  SIGNAL ie, dv      : BOOLEAN;                       -- input error, divide (B = 0 checked where used)
   CONSTANT SEG_OFF : BIT_VECTOR(6 DOWNTO 0) := "1111111";
   CONSTANT SEG_E   : BIT_VECTOR(6 DOWNTO 0) := "0000110";
   CONSTANT SEG_R   : BIT_VECTOR(6 DOWNTO 0) := "0101111";
@@ -36,7 +36,7 @@ BEGIN
   WITH SW(3) SELECT base <= 16 WHEN '1', 10 WHEN OTHERS;
   WITH SW(2 DOWNTO 1) SELECT                           -- "11" (divide) is handled by dv
     res <= A + B WHEN "00", A - B WHEN "01", A * B WHEN OTHERS;
-  ie <= A > 9 OR B > 9;  dv <= SW(2 DOWNTO 1) = "11";  dz <= dv AND B = 0;
+  ie <= A > 9 OR B > 9;  dv <= SW(2 DOWNTO 1) = "11";
 
   PROCESS (CLOCK_50)                                   -- counter (sequential)
     VARIABLE n : INTEGER RANGE -5 TO 10009;
@@ -63,10 +63,10 @@ BEGIN
   HEX6 <= SEG_OFF WHEN SW(0) = '0' ELSE SEG_E WHEN A > 9 ELSE digit(A, 1, 10);
   HEX4 <= SEG_OFF WHEN SW(0) = '0' ELSE SEG_E WHEN B > 9 ELSE digit(B, 1, 10);
   HEX3 <= digit(count, 1000, 10) WHEN SW(0) = '0' ELSE SEG_OFF WHEN ie
-          ELSE SEG_E WHEN dz ELSE digit(A / B, 1, 10) WHEN dv ELSE SEG_OFF;   -- E / quotient
-  HEX2 <= digit(count, 100, 10) WHEN SW(0) = '0' ELSE SEG_R WHEN dz AND NOT ie ELSE SEG_OFF;
+          ELSE SEG_E WHEN dv AND B = 0 ELSE digit(A / B, 1, 10) WHEN dv ELSE SEG_OFF;   -- E / quotient
+  HEX2 <= digit(count, 100, 10) WHEN SW(0) = '0' ELSE SEG_R WHEN dv AND B = 0 AND NOT ie ELSE SEG_OFF;
   HEX1 <= digit(count, 10, 10) WHEN SW(0) = '0' ELSE SEG_OFF WHEN ie ELSE SEG_R WHEN dv
           ELSE "0111111" WHEN res < 0 ELSE digit(ABS res, base, base);   -- r / minus
-  HEX0 <= digit(count, 1, 10) WHEN SW(0) = '0' ELSE SEG_E WHEN ie ELSE SEG_OFF WHEN dz
+  HEX0 <= digit(count, 1, 10) WHEN SW(0) = '0' ELSE SEG_E WHEN ie ELSE SEG_OFF WHEN dv AND B = 0
           ELSE digit(A MOD B, 1, 10) WHEN dv ELSE digit(ABS res, 1, base);   -- remainder
 END a;

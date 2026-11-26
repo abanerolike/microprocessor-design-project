@@ -110,6 +110,7 @@ This folder is only a skeleton for now. The plan is to run the controller on one
 
 ```
 project_one/quartus_project1_counter_calculator_kk/   VHDL, pin and timing files
+project_one/sim/                                      division by zero testbench
 project_two/python/                                   reference model and vector scripts
 project_two/src/, sim/, quartus/                      VHDL, testbenches and vectors, Quartus project
 project_two/docs/                                     figures for this README
@@ -119,6 +120,14 @@ project_three/quartus/ctrl_board/, plant_board/       one Quartus project per bo
 ## Building
 
 Open the `.qpf` file in Quartus II 13.0sp1 and run a full compile. Keep unused pins set to "As input tri-stated". Program the board over JTAG with the RUN/PROG switch on RUN.
+
+For Project 1, run these in `project_one/sim`. The last line prints `calc_divzero_tb PASS`.
+
+```
+vlib work
+vcom ../quartus_project1_counter_calculator_kk/quartus_project1_counter_calculator_kk.vhd calc_divzero_tb.vhd
+vsim -c calc_divzero_tb -do "run -all; quit"
+```
 
 For Project 2, run `vsim -c -do run_tb.do` in `project_two/sim` to run all testbenches.
 
